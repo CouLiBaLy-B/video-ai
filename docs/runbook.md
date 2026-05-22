@@ -376,3 +376,29 @@ Docker Compose production profile starts MinIO and an init container that create
 ```bash
 STORAGE_BACKEND=s3 docker compose --profile prod up --build api worker redis postgres minio minio-init
 ```
+
+## API key authentication and ownership
+
+Authentication can be enabled for private/beta deployments with simple API keys:
+
+```env
+AUTH_ENABLED=true
+API_KEYS=alice:alice-key,bob:bob-key
+```
+
+Clients must send:
+
+```http
+X-API-Key: alice-key
+```
+
+When auth is enabled:
+
+- created jobs are attached to the authenticated `user_id`;
+- `GET /api/generations` only returns the current user's jobs;
+- job detail, video download, approve, reject, cancel, rerun and variant actions enforce ownership;
+- unauthorized requests return `401`;
+- cross-user access returns `404` to avoid leaking job existence.
+
+The React UI includes an API key field in the sidebar and stores it in browser localStorage.
+For public production, replace this simple API-key auth with a full identity provider/JWT flow.
