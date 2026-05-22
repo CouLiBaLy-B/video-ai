@@ -35,11 +35,13 @@ async def test_orchestrator_runs_full_mock_workflow(tmp_path: Path) -> None:
         model_router=StaticVideoModelRouter(),
         video_generator=MockVideoGenerator(storage),
         quality_reviewer=HeuristicQualityReviewer(),
+        runtime_profile="ai=test;video=mock",
     )
 
     completed = await orchestrator.run(job)
 
     assert completed.status == JobStatus.COMPLETED
+    assert completed.events[0].message.endswith("(ai=test;video=mock)")
     assert completed.plan is not None
     assert completed.plan.steps
     assert completed.video is not None

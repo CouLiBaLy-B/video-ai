@@ -68,4 +68,16 @@ def get_orchestrator() -> VideoGenerationOrchestrator:
         model_router=create_model_router(settings),
         video_generator=create_video_generator(settings, get_output_storage()),
         quality_reviewer=HeuristicQualityReviewer(),
+        runtime_profile=_runtime_profile(settings),
+    )
+
+
+def _runtime_profile(settings: Settings) -> str:
+    """Return a compact runtime profile for event logs."""
+    fallback = "fallback=mock" if settings.vllm_fallback_to_mock else "fallback=disabled"
+    return (
+        f"planner={settings.agent_planner_provider};"
+        f"ai={settings.ai_provider};"
+        f"{fallback};"
+        f"video={settings.video_generator_backend}"
     )

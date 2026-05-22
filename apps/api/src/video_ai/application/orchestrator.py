@@ -32,6 +32,7 @@ class VideoGenerationOrchestrator:
         model_router: VideoModelRouter,
         video_generator: VideoGenerator,
         quality_reviewer: VideoQualityReviewer,
+        runtime_profile: str = "ai=mock;video=mock",
     ) -> None:
         self._repository = repository
         self._workflow_planner = workflow_planner
@@ -40,10 +41,15 @@ class VideoGenerationOrchestrator:
         self._model_router = model_router
         self._video_generator = video_generator
         self._quality_reviewer = quality_reviewer
+        self._runtime_profile = runtime_profile
 
     async def run(self, job: VideoGenerationJob) -> VideoGenerationJob:
         """Run planning, analysis, generation and review for a job."""
-        current = await self._transition(job, JobStatus.PLANNING, "Creating agentic workflow plan")
+        current = await self._transition(
+            job,
+            JobStatus.PLANNING,
+            f"Creating agentic workflow plan ({self._runtime_profile})",
+        )
         plan = await self._workflow_planner.plan(current)
         current = current.model_copy(update={"plan": plan})
         await self._repository.save(current)
