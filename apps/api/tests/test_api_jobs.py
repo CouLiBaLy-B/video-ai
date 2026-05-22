@@ -30,6 +30,10 @@ async def test_create_get_and_download_generation_job() -> None:
         assert fetched["status"] == "completed"
         assert fetched["video_url"] is not None
 
+        list_response = await client.get("/api/generations")
+        assert list_response.status_code == 200
+        assert any(item["id"] == payload["id"] for item in list_response.json())
+
         video_response = await client.get(f"/api/generations/{payload['id']}/video")
         assert video_response.status_code == 200
         assert video_response.content.startswith(b"MOCK_MP4")

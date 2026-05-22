@@ -68,6 +68,15 @@ async def create_generation(
     return JobResponse.from_job(job)
 
 
+@router.get("/generations", response_model=list[JobResponse])
+async def list_generations(
+    repository: JobRepository = Depends(get_job_repository),
+) -> list[JobResponse]:
+    """Return all known generation jobs."""
+    jobs = await repository.list_all()
+    return [JobResponse.from_job(job) for job in jobs]
+
+
 @router.get("/generations/{job_id}", response_model=JobResponse)
 async def get_generation(
     job_id: UUID,
