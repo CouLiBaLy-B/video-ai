@@ -6,4 +6,6 @@ def test_docker_and_runbook_files_exist() -> None:
     assert Path("docker/api/Dockerfile").exists()
     assert Path("docker/web/Dockerfile").exists()
     assert Path("docs/runbook.md").exists()
-    assert "worker:" in Path("docker-compose.yml").read_text()
+    compose = Path("docker-compose.yml").read_text()
+    assert "worker:" in compose
+    assert "postgresql+psycopg" in compose

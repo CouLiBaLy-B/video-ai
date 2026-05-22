@@ -192,3 +192,36 @@ video_ai.workers.jobs.run_approved_job_task
 Important: when using `redis-rq`, use a persistent job repository shared by API and worker,
 such as SQLite for local production-like runs or Postgres in a future deployment.
 Do not use the in-memory repository with separate worker processes.
+
+
+## Postgres repository
+
+Use Postgres for API/worker deployments where multiple processes need shared job state.
+
+Configuration:
+
+```env
+JOB_REPOSITORY_BACKEND=postgres
+DATABASE_URL=postgresql+psycopg://video_ai:video_ai_dev@localhost:5432/video_ai
+```
+
+Install database dependencies:
+
+```bash
+pip install -e '.[db]'
+```
+
+Run migrations:
+
+```bash
+DATABASE_URL=postgresql+psycopg://video_ai:video_ai_dev@localhost:5432/video_ai alembic upgrade head
+```
+
+For production-like local Docker with API, worker, Redis and Postgres:
+
+```bash
+docker compose --profile prod up --build api worker redis postgres
+```
+
+The current SQLAlchemy repository auto-creates the `generation_jobs` table as a safety net,
+but Alembic migrations are the recommended production path.

@@ -8,8 +8,9 @@ services:
       STORAGE_ROOT: /app/.data/storage
       VIDEO_GENERATOR_BACKEND: ${VIDEO_GENERATOR_BACKEND:-mock}
       TASK_QUEUE_BACKEND: ${TASK_QUEUE_BACKEND:-fastapi}
-      JOB_REPOSITORY_BACKEND: ${JOB_REPOSITORY_BACKEND:-memory}
+      JOB_REPOSITORY_BACKEND: ${JOB_REPOSITORY_BACKEND:-postgres}
       SQLITE_DATABASE_PATH: /app/.data/video_ai.sqlite3
+      DATABASE_URL: postgresql+psycopg://video_ai:video_ai_dev@postgres:5432/video_ai
       REDIS_URL: redis://redis:6379/0
       RQ_QUEUE_NAME: video-ai
       VLLM_TEXT_BASE_URL: http://vllm-text:8000/v1
@@ -38,8 +39,9 @@ services:
     environment:
       APP_ENV: production
       TASK_QUEUE_BACKEND: redis-rq
-      JOB_REPOSITORY_BACKEND: sqlite
+      JOB_REPOSITORY_BACKEND: postgres
       SQLITE_DATABASE_PATH: /app/.data/video_ai.sqlite3
+      DATABASE_URL: postgresql+psycopg://video_ai:video_ai_dev@postgres:5432/video_ai
       STORAGE_ROOT: /app/.data/storage
       REDIS_URL: redis://redis:6379/0
       RQ_QUEUE_NAME: video-ai
@@ -51,6 +53,7 @@ services:
       - ./.data:/app/.data
     depends_on:
       - redis
+      - postgres
     profiles: ["prod", "worker"]
 
   redis:
@@ -65,6 +68,11 @@ services:
       POSTGRES_DB: video_ai
       POSTGRES_USER: video_ai
       POSTGRES_PASSWORD: video_ai_dev
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U video_ai -d video_ai"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
