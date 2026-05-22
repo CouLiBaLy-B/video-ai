@@ -39,6 +39,7 @@ class Settings(BaseSettings):
     vllm_text_model: str = "Qwen/Qwen3.6-35B-A3B"
     vllm_vision_model: str = "Qwen/Qwen2.5-VL-7B-Instruct"
     vllm_timeout_seconds: float = 60.0
+    vllm_fallback_to_mock: bool = True
 
     # Video generation backend.
     video_generator_backend: VideoGeneratorBackend = "mock"

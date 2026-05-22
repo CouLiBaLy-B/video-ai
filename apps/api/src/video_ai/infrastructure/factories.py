@@ -16,6 +16,7 @@ from video_ai.domain.ports import (
     WorkflowPlanner,
 )
 from video_ai.infrastructure.composite_video import CompositeVideoGenerator
+from video_ai.infrastructure.fallback_ai import FallbackPromptEnhancer, FallbackVisionAnalyzer
 from video_ai.infrastructure.ltx_video import LTX_VIDEO_2B_DISTILLED_PROFILE, LtxVideoGenerator
 from video_ai.infrastructure.routing import RequestAwareVideoModelRouter
 from video_ai.infrastructure.simple_ai import SimplePromptEnhancer, SimpleVisionAnalyzer
@@ -53,7 +54,10 @@ def create_vision_analyzer(settings: Settings) -> VisionAnalyzer:
             model=settings.vllm_vision_model,
             timeout_seconds=settings.vllm_timeout_seconds,
         )
-        return VllmVisionAnalyzer(gateway)
+        analyzer = VllmVisionAnalyzer(gateway)
+        if settings.vllm_fallback_to_mock:
+            return FallbackVisionAnalyzer(analyzer, SimpleVisionAnalyzer())
+        return analyzer
     return SimpleVisionAnalyzer()
 
 
@@ -66,7 +70,10 @@ def create_prompt_enhancer(settings: Settings) -> PromptEnhancer:
             model=settings.vllm_text_model,
             timeout_seconds=settings.vllm_timeout_seconds,
         )
-        return VllmPromptEnhancer(gateway)
+        enhancer = VllmPromptEnhancer(gateway)
+        if settings.vllm_fallback_to_mock:
+            return FallbackPromptEnhancer(enhancer, SimplePromptEnhancer())
+        return enhancer
     return SimplePromptEnhancer()
 
 

@@ -48,6 +48,7 @@ async def get_system_capabilities() -> SystemCapabilitiesResponse:
         planned_video_backends=[VideoBackend.WAN_I2V.value],
         text_model=settings.vllm_text_model,
         vision_model=settings.vllm_vision_model,
+        vllm_fallback_to_mock=settings.vllm_fallback_to_mock,
     )
 
 

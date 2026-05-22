@@ -12,6 +12,7 @@ from video_ai.infrastructure.factories import (
     create_vision_analyzer,
     create_workflow_planner,
 )
+from video_ai.infrastructure.fallback_ai import FallbackPromptEnhancer, FallbackVisionAnalyzer
 from video_ai.infrastructure.simple_ai import SimplePromptEnhancer, SimpleVisionAnalyzer
 from video_ai.infrastructure.vllm import VllmPromptEnhancer, VllmVisionAnalyzer
 from video_ai.storage.local import LocalStorageService
@@ -53,8 +54,15 @@ async def test_router_uses_ltx_profile_when_configured(tmp_path: Path) -> None:
     assert profile.id == "custom/ltx"
 
 
-def test_vllm_factories_return_vllm_adapters() -> None:
+def test_vllm_factories_return_fallback_adapters_by_default() -> None:
     settings = Settings(ai_provider="vllm")
+
+    assert isinstance(create_vision_analyzer(settings), FallbackVisionAnalyzer)
+    assert isinstance(create_prompt_enhancer(settings), FallbackPromptEnhancer)
+
+
+def test_vllm_factories_can_disable_fallback() -> None:
+    settings = Settings(ai_provider="vllm", vllm_fallback_to_mock=False)
 
     assert isinstance(create_vision_analyzer(settings), VllmVisionAnalyzer)
     assert isinstance(create_prompt_enhancer(settings), VllmPromptEnhancer)

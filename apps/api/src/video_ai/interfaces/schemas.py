@@ -83,6 +83,7 @@ class SystemCapabilitiesResponse(BaseModel):
     planned_video_backends: list[str]
     text_model: str
     vision_model: str
+    vllm_fallback_to_mock: bool
 
 
 class ComponentHealthResponse(BaseModel):
