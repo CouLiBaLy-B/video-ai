@@ -185,3 +185,7 @@ button.secondary {
   background: rgba(255,255,255,0.12);
   color: #f5f3ee;
 }
+
+.cancel-card {
+  margin-top: 14px;
+}

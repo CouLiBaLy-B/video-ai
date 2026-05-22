@@ -135,3 +135,15 @@ curl -X POST http://localhost:8000/api/generations/<job_id>/reject
 
 The UI displays a validation panel with `Valider la génération GPU` when approval is required.
 Mock generations do not require approval and continue automatically.
+
+
+## Cancellation
+
+Cancel a queued, planning, generating, reviewing, or approval-waiting job:
+
+```bash
+curl -X POST http://localhost:8000/api/generations/<job_id>/cancel
+```
+
+Cancellation is checked before queued background tasks and before approved GPU execution starts.
+For long-running GPU kernels already inside a model call, cancellation is best-effort until the worker returns.

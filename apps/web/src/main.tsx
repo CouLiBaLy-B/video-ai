@@ -186,6 +186,19 @@ function App() {
     }
   }
 
+
+  async function cancelGeneration() {
+    if (!job) return;
+    setError(null);
+    try {
+      const response = await fetch(`/api/generations/${job.id}/cancel`, { method: 'POST' });
+      if (!response.ok) throw new Error(await response.text());
+      setJob((await response.json()) as JobResponse);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Erreur inconnue');
+    }
+  }
+
   return (
     <main className="app-shell">
       <section className="sidebar">
@@ -287,6 +300,13 @@ function App() {
                     <p>{step.description}</p>
                   </div>
                 ))}
+              </div>
+            )}
+            {['queued', 'planning', 'analyzing', 'generating', 'reviewing'].includes(job.status) && (
+              <div className="cancel-card">
+                <button type="button" className="secondary" onClick={cancelGeneration}>
+                  Annuler la génération
+                </button>
               </div>
             )}
             {job.status === 'waiting_for_approval' && (
