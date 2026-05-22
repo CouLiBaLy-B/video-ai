@@ -164,7 +164,9 @@ async def create_generation(
     """Create and asynchronously process a text+image to video generation job."""
     settings = get_settings()
     content = await image.read()
-    validator = ImageValidationService(max_bytes=settings.max_upload_bytes)
+    validator = ImageValidationService(
+        max_bytes=settings.max_upload_bytes, max_pixels=settings.max_image_pixels
+    )
     try:
         sanitized = validator.validate_and_sanitize(content, image.content_type or "")
     except ImageValidationError as exc:

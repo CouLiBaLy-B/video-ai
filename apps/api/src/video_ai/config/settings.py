@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     sqlite_database_path: Path = Field(default=Path(".data/video_ai.sqlite3"))
     database_url: str = "postgresql+psycopg://video_ai:video_ai_dev@localhost:5432/video_ai"
     max_upload_bytes: int = 10 * 1024 * 1024
+    max_image_pixels: int = 16_000_000
+    rate_limit_enabled: bool = True
+    rate_limit_requests: int = 60
+    rate_limit_window_seconds: int = 60
     task_queue_backend: TaskQueueBackend = "fastapi"
     redis_url: str = "redis://localhost:6379/0"
     rq_queue_name: str = "video-ai"
