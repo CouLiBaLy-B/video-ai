@@ -364,6 +364,7 @@ async def cancel_generation(
 async def stream_generation_events(
     job_id: UUID,
     repository: JobRepository = Depends(get_job_repository),
+    user: UserContext = Depends(get_current_user),
 ) -> StreamingResponse:
     """Stream job status events as Server-Sent Events."""
 
@@ -372,6 +373,11 @@ async def stream_generation_events(
         for _ in range(120):
             job = await repository.get(job_id)
             if job is None:
+                yield "event: error\ndata: Generation job not found\n\n"
+                return
+            try:
+                ensure_job_access(job, user)
+            except HTTPException:
                 yield "event: error\ndata: Generation job not found\n\n"
                 return
             if job.status != previous_status:
