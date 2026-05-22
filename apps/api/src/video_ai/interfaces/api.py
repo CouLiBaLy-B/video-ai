@@ -22,6 +22,11 @@ from video_ai.application.jobs import JobApplicationService
 from video_ai.application.metrics import MetricsService
 from video_ai.application.orchestrator import VideoGenerationOrchestrator
 from video_ai.application.quotas import QuotaExceededError, QuotaService
+from video_ai.application.safety import (
+    SafetyDecision,
+    SafetyPolicyViolationError,
+    SafetyService,
+)
 from video_ai.config.settings import get_settings
 from video_ai.domain.enums import JobStatus, VideoBackend
 from video_ai.domain.models import VideoGenerationJob
@@ -36,6 +41,7 @@ from video_ai.interfaces.dependencies import (
     get_job_service,
     get_orchestrator,
     get_quota_service,
+    get_safety_service,
 )
 from video_ai.interfaces.schemas import (
     ComponentHealthResponse,
@@ -165,6 +171,7 @@ async def create_generation(
     inference_steps: int | None = Form(default=None),
     user: UserContext = Depends(get_current_user),
     quota_service: QuotaService = Depends(get_quota_service),
+    safety_service: SafetyService = Depends(get_safety_service),
     service: JobApplicationService = Depends(get_job_service),
     orchestrator: VideoGenerationOrchestrator = Depends(get_orchestrator),
 ) -> JobResponse:
@@ -183,6 +190,8 @@ async def create_generation(
             else status.HTTP_415_UNSUPPORTED_MEDIA_TYPE
         )
         raise HTTPException(status_code, str(exc)) from exc
+
+    _assert_prompt_safety(prompt, safety_service)
 
     try:
         await quota_service.validate_create(
@@ -258,12 +267,14 @@ async def rerun_generation(
     orchestrator: VideoGenerationOrchestrator = Depends(get_orchestrator),
     user: UserContext = Depends(get_current_user),
     quota_service: QuotaService = Depends(get_quota_service),
+    safety_service: SafetyService = Depends(get_safety_service),
 ) -> JobResponse:
     """Create a new generation job using the same request and preferences."""
     source = await repository.get(job_id)
     if source is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Generation job not found")
     ensure_job_access(source, user)
+    _assert_prompt_safety(source.request.prompt, safety_service)
     prefs = source.request.preferences
     try:
         await quota_service.validate_create(
@@ -297,12 +308,14 @@ async def create_generation_variant(
     orchestrator: VideoGenerationOrchestrator = Depends(get_orchestrator),
     user: UserContext = Depends(get_current_user),
     quota_service: QuotaService = Depends(get_quota_service),
+    safety_service: SafetyService = Depends(get_safety_service),
 ) -> JobResponse:
     """Create a new generation job with the same parameters but a different seed."""
     source = await repository.get(job_id)
     if source is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Generation job not found")
     ensure_job_access(source, user)
+    _assert_prompt_safety(source.request.prompt, safety_service)
     current_seed = source.request.preferences.seed
     if current_seed is None and source.generation_parameters is not None:
         current_seed = source.generation_parameters.seed
@@ -449,3 +462,16 @@ async def get_generation_video(
         raise HTTPException(status.HTTP_404_NOT_FOUND, str(exc)) from exc
     return RedirectResponse(download_url, status_code=status.HTTP_307_TEMPORARY_REDIRECT)
 
+
+
+def _assert_prompt_safety(prompt: str, safety_service: SafetyService) -> None:
+    """Convert safety decisions to HTTP errors."""
+    try:
+        safety_service.assert_prompt_allowed(prompt)
+    except SafetyPolicyViolationError as exc:
+        status_code = (
+            status.HTTP_403_FORBIDDEN
+            if exc.decision == SafetyDecision.BLOCKED
+            else status.HTTP_409_CONFLICT
+        )
+        raise HTTPException(status_code, exc.reason) from exc
