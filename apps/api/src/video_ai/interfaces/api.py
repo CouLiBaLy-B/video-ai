@@ -23,6 +23,7 @@ from video_ai.application.metrics import MetricsService
 from video_ai.application.orchestrator import VideoGenerationOrchestrator
 from video_ai.config.settings import get_settings
 from video_ai.domain.enums import JobStatus, VideoBackend
+from video_ai.domain.models import VideoGenerationJob
 from video_ai.domain.ports import JobRepository
 from video_ai.infrastructure.image_validation import ImageValidationError, ImageValidationService
 from video_ai.infrastructure.ltx_video import LtxVideoParameterValidator
@@ -221,6 +222,65 @@ async def get_generation(
     if job is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Generation job not found")
     return JobResponse.from_job(job)
+
+
+@router.post(
+    "/generations/{job_id}/rerun",
+    response_model=JobResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+async def rerun_generation(
+    job_id: UUID,
+    background_tasks: BackgroundTasks,
+    repository: JobRepository = Depends(get_job_repository),
+    orchestrator: VideoGenerationOrchestrator = Depends(get_orchestrator),
+) -> JobResponse:
+    """Create a new generation job using the same request and preferences."""
+    source = await repository.get(job_id)
+    if source is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Generation job not found")
+    new_job = VideoGenerationJob(request=source.request)
+    await repository.save(new_job)
+    queue = create_job_task_queue(
+        background_tasks=background_tasks,
+        orchestrator=orchestrator,
+        repository=get_job_repository(),
+    )
+    queue.enqueue_generation(new_job.id)
+    return JobResponse.from_job(new_job)
+
+
+@router.post(
+    "/generations/{job_id}/variant",
+    response_model=JobResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+async def create_generation_variant(
+    job_id: UUID,
+    background_tasks: BackgroundTasks,
+    repository: JobRepository = Depends(get_job_repository),
+    orchestrator: VideoGenerationOrchestrator = Depends(get_orchestrator),
+) -> JobResponse:
+    """Create a new generation job with the same parameters but a different seed."""
+    source = await repository.get(job_id)
+    if source is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Generation job not found")
+    current_seed = source.request.preferences.seed
+    if current_seed is None and source.generation_parameters is not None:
+        current_seed = source.generation_parameters.seed
+    next_seed = 1 if current_seed is None else current_seed + 1
+    preferences = source.request.preferences.model_copy(update={"seed": next_seed})
+    request = source.request.model_copy(update={"preferences": preferences})
+
+    new_job = VideoGenerationJob(request=request)
+    await repository.save(new_job)
+    queue = create_job_task_queue(
+        background_tasks=background_tasks,
+        orchestrator=orchestrator,
+        repository=get_job_repository(),
+    )
+    queue.enqueue_generation(new_job.id)
+    return JobResponse.from_job(new_job)
 
 
 @router.post("/generations/{job_id}/approve", response_model=JobResponse)

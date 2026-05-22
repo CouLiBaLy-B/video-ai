@@ -192,3 +192,35 @@ async def test_cancel_generation_rejects_completed_job() -> None:
         cancel_response = await client.post(f"/api/generations/{payload['id']}/cancel")
 
     assert cancel_response.status_code == 409
+
+
+async def test_rerun_generation_creates_new_job() -> None:
+    app = create_app()
+    files = {"image": ("input.png", png_bytes(), "image/png")}
+    data = {"prompt": "Make this image cinematic", "requested_backend": "mock"}
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        create_response = await client.post("/api/generations", data=data, files=files)
+        source = create_response.json()
+        rerun_response = await client.post(f"/api/generations/{source['id']}/rerun")
+
+    assert rerun_response.status_code == 202
+    rerun = rerun_response.json()
+    assert rerun["id"] != source["id"]
+    assert rerun["prompt"] == source["prompt"]
+
+
+async def test_variant_generation_increments_seed() -> None:
+    app = create_app()
+    files = {"image": ("input.png", png_bytes(), "image/png")}
+    data = {"prompt": "Make this image cinematic", "requested_backend": "mock", "seed": "41"}
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        create_response = await client.post("/api/generations", data=data, files=files)
+        source = create_response.json()
+        variant_response = await client.post(f"/api/generations/{source['id']}/variant")
+        variant = variant_response.json()
+        get_variant = await client.get(f"/api/generations/{variant['id']}")
+
+    assert variant_response.status_code == 202
+    assert get_variant.json()["parameters"]["seed"] == 42
