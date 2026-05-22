@@ -484,3 +484,33 @@ When DeepAgents mode is enabled, the planner is created with:
   - LTX parameter validation.
 
 Important: GPU generation itself remains controlled by the typed application orchestrator, approval gate, quota service and worker queue. DeepAgents plans and delegates workflow intelligence, while the application remains authoritative for safety-critical side effects.
+
+## Prometheus and Sentry observability
+
+Prometheus-compatible metrics are exposed at:
+
+```bash
+curl http://localhost:8000/metrics
+```
+
+Current metrics include:
+
+- `video_ai_http_requests_total`
+- `video_ai_http_request_duration_ms_sum`
+- `video_ai_generation_jobs_total`
+- `video_ai_generation_jobs_by_status`
+
+Sentry can be enabled with:
+
+```env
+SENTRY_DSN=https://examplePublicKey@o0.ingest.sentry.io/0
+SENTRY_TRACES_SAMPLE_RATE=0.1
+```
+
+Install optional observability dependencies:
+
+```bash
+pip install -e '.[observability]'
+```
+
+The current Prometheus registry is in-process and suitable for single-process deployments. For multi-worker production deployments, use `prometheus_client` multiprocess mode or OpenTelemetry Collector.
