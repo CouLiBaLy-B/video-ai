@@ -278,3 +278,25 @@ Image upload security is configurable:
 MAX_UPLOAD_BYTES=10485760
 MAX_IMAGE_PIXELS=16000000
 ```
+
+## Product iteration controls
+
+Generation history is available from:
+
+```bash
+curl http://localhost:8000/api/generations
+```
+
+Rerun a job with the same prompt, image and preferences:
+
+```bash
+curl -X POST http://localhost:8000/api/generations/<job_id>/rerun
+```
+
+Create a new seed variant:
+
+```bash
+curl -X POST http://localhost:8000/api/generations/<job_id>/variant
+```
+
+The frontend sidebar displays recent generations and lets the user reload a job, rerun it, or create a new seed variant.
