@@ -8,6 +8,7 @@ from video_ai.config.settings import Settings, get_settings
 from video_ai.infrastructure.factories import (
     create_model_router,
     create_prompt_enhancer,
+    create_workflow_planner,
     create_video_generator,
     create_vision_analyzer,
 )
@@ -44,6 +45,7 @@ def get_orchestrator() -> VideoGenerationOrchestrator:
     settings = get_settings()
     return VideoGenerationOrchestrator(
         repository=get_job_repository(),
+        workflow_planner=create_workflow_planner(settings),
         vision_analyzer=create_vision_analyzer(settings),
         prompt_enhancer=create_prompt_enhancer(settings),
         model_router=create_model_router(settings),

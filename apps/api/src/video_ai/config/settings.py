@@ -8,6 +8,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 AiProvider = Literal["mock", "vllm"]
+AgentPlannerProvider = Literal["simple", "deepagents"]
 VideoGeneratorBackend = Literal["mock", "ltx-video", "wan-i2v"]
 
 
@@ -22,7 +23,11 @@ class Settings(BaseSettings):
     storage_root: Path = Field(default=Path(".data/storage"))
     max_upload_bytes: int = 10 * 1024 * 1024
 
-    # AI orchestration adapters. `mock` is deterministic and GPU-free.
+    # Planning/orchestration adapters. `simple` is deterministic and GPU-free.
+    agent_planner_provider: AgentPlannerProvider = "simple"
+    deepagents_model: str = "openai:gpt-4o-mini"
+
+    # AI model adapters. `mock` is deterministic and GPU-free.
     ai_provider: AiProvider = "mock"
 
     # vLLM OpenAI-compatible endpoints.

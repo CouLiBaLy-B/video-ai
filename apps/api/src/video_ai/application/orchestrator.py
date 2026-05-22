@@ -11,6 +11,7 @@ from video_ai.domain.ports import (
     VideoModelRouter,
     VideoQualityReviewer,
     VisionAnalyzer,
+    WorkflowPlanner,
 )
 
 
@@ -25,6 +26,7 @@ class VideoGenerationOrchestrator:
         self,
         *,
         repository: JobRepository,
+        workflow_planner: WorkflowPlanner,
         vision_analyzer: VisionAnalyzer,
         prompt_enhancer: PromptEnhancer,
         model_router: VideoModelRouter,
@@ -32,6 +34,7 @@ class VideoGenerationOrchestrator:
         quality_reviewer: VideoQualityReviewer,
     ) -> None:
         self._repository = repository
+        self._workflow_planner = workflow_planner
         self._vision_analyzer = vision_analyzer
         self._prompt_enhancer = prompt_enhancer
         self._model_router = model_router
@@ -39,8 +42,13 @@ class VideoGenerationOrchestrator:
         self._quality_reviewer = quality_reviewer
 
     async def run(self, job: VideoGenerationJob) -> VideoGenerationJob:
-        """Run analysis, planning, generation and review for a job."""
-        current = await self._transition(job, JobStatus.ANALYZING, "Analyzing input image")
+        """Run planning, analysis, generation and review for a job."""
+        current = await self._transition(job, JobStatus.PLANNING, "Creating agentic workflow plan")
+        plan = await self._workflow_planner.plan(current)
+        current = current.model_copy(update={"plan": plan})
+        await self._repository.save(current)
+
+        current = await self._transition(current, JobStatus.ANALYZING, "Analyzing input image")
         analysis = await self._vision_analyzer.analyze(current.request.image, current.request.prompt)
 
         current = await self._transition(current, JobStatus.PLANNING, "Enhancing prompt and routing model")

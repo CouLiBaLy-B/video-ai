@@ -6,6 +6,7 @@ from typing import Protocol
 from uuid import UUID
 
 from video_ai.domain.models import (
+    AgentPlan,
     EnhancedPrompt,
     GeneratedVideo,
     GenerationParameters,
@@ -17,6 +18,12 @@ from video_ai.domain.models import (
     StorageRef,
     VideoGenerationJob,
 )
+
+
+class WorkflowPlanner(Protocol):
+    """Create an agentic execution plan for a generation request."""
+
+    async def plan(self, job: VideoGenerationJob) -> AgentPlan: ...
 
 
 class VisionAnalyzer(Protocol):

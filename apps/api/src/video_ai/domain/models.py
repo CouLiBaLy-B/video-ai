@@ -58,6 +58,22 @@ class GenerationRequest(DomainModel):
         return normalized
 
 
+class AgentPlanStep(DomainModel):
+    """Single planned agentic workflow step."""
+
+    name: str
+    description: str
+    agent: str
+
+
+class AgentPlan(DomainModel):
+    """Plan produced by a simple planner or DeepAgents supervisor."""
+
+    summary: str
+    steps: list[AgentPlanStep] = Field(default_factory=list)
+    requires_human_approval: bool = False
+
+
 class ImageAnalysis(DomainModel):
     """Structured visual understanding extracted from the image."""
 
@@ -149,6 +165,7 @@ class VideoGenerationJob(DomainModel):
     request: GenerationRequest
     status: JobStatus = JobStatus.QUEUED
     status_reason: str | None = None
+    plan: AgentPlan | None = None
     video: GeneratedVideo | None = None
     quality_report: QualityReport | None = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))

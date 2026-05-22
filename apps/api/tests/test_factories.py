@@ -2,17 +2,29 @@ import pytest
 
 from video_ai.config.settings import Settings
 from video_ai.domain.enums import VideoBackend
+from video_ai.agents.planners import DeepAgentsWorkflowPlanner, SimpleWorkflowPlanner
 from video_ai.infrastructure.factories import (
     create_model_router,
     create_prompt_enhancer,
     create_video_generator,
     create_vision_analyzer,
+    create_workflow_planner,
 )
 from video_ai.infrastructure.ltx_video import LtxVideoGenerator
 from video_ai.infrastructure.simple_ai import SimplePromptEnhancer, SimpleVisionAnalyzer
 from video_ai.infrastructure.video import MockVideoGenerator
 from video_ai.infrastructure.vllm import VllmPromptEnhancer, VllmVisionAnalyzer
 from video_ai.storage.local import LocalStorageService
+
+
+def test_planner_factory_returns_simple_by_default() -> None:
+    assert isinstance(create_workflow_planner(Settings()), SimpleWorkflowPlanner)
+
+
+def test_planner_factory_can_return_deepagents_planner() -> None:
+    planner = create_workflow_planner(Settings(agent_planner_provider="deepagents"))
+
+    assert isinstance(planner, DeepAgentsWorkflowPlanner)
 
 
 def test_mock_ai_factories_return_simple_adapters() -> None:

@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+from video_ai.agents.deepagents_factory import DeepAgentConfig
+from video_ai.agents.planners import DeepAgentsWorkflowPlanner, SimpleWorkflowPlanner
 from video_ai.config.settings import Settings
 from video_ai.domain.enums import VideoBackend
 from video_ai.domain.models import ModelProfile
-from video_ai.domain.ports import PromptEnhancer, StorageService, VideoGenerator, VideoModelRouter, VisionAnalyzer
+from video_ai.domain.ports import PromptEnhancer, StorageService, VideoGenerator, VideoModelRouter, VisionAnalyzer, WorkflowPlanner
 from video_ai.infrastructure.ltx_video import LTX_VIDEO_2B_DISTILLED_PROFILE, LtxVideoGenerator
 from video_ai.infrastructure.simple_ai import SimplePromptEnhancer, SimpleVisionAnalyzer
 from video_ai.infrastructure.video import MockVideoGenerator, StaticVideoModelRouter
@@ -23,6 +25,15 @@ WAN_I2V_A14B_PROFILE = ModelProfile(
     default_height=480,
     default_fps=16,
 )
+
+
+def create_workflow_planner(settings: Settings) -> WorkflowPlanner:
+    """Create the configured agentic workflow planner."""
+    if settings.agent_planner_provider == "deepagents":
+        return DeepAgentsWorkflowPlanner(
+            DeepAgentConfig(model=settings.deepagents_model, skills_path="skills")
+        )
+    return SimpleWorkflowPlanner()
 
 
 def create_vision_analyzer(settings: Settings) -> VisionAnalyzer:

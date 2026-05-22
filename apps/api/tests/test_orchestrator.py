@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from video_ai.agents.planners import SimpleWorkflowPlanner
 from video_ai.application.orchestrator import VideoGenerationOrchestrator
 from video_ai.domain.enums import JobStatus
 from video_ai.domain.models import GenerationRequest, ImageAsset, VideoGenerationJob
@@ -28,6 +29,7 @@ async def test_orchestrator_runs_full_mock_workflow(tmp_path: Path) -> None:
     await repository.save(job)
     orchestrator = VideoGenerationOrchestrator(
         repository=repository,
+        workflow_planner=SimpleWorkflowPlanner(),
         vision_analyzer=SimpleVisionAnalyzer(),
         prompt_enhancer=SimplePromptEnhancer(),
         model_router=StaticVideoModelRouter(),
@@ -38,6 +40,8 @@ async def test_orchestrator_runs_full_mock_workflow(tmp_path: Path) -> None:
     completed = await orchestrator.run(job)
 
     assert completed.status == JobStatus.COMPLETED
+    assert completed.plan is not None
+    assert completed.plan.steps
     assert completed.video is not None
     assert completed.quality_report is not None
     assert completed.quality_report.accepted is True
