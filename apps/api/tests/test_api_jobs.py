@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from httpx import ASGITransport, AsyncClient
 
 from image_helpers import png_bytes
@@ -224,3 +226,45 @@ async def test_variant_generation_increments_seed() -> None:
 
     assert variant_response.status_code == 202
     assert get_variant.json()["parameters"]["seed"] == 42
+
+
+async def test_download_video_redirects_for_remote_storage() -> None:
+    from video_ai.domain.models import (
+        GeneratedVideo,
+        GenerationRequest,
+        ImageAsset,
+        StorageRef,
+        VideoGenerationJob,
+    )
+    from video_ai.interfaces.dependencies import get_job_repository
+
+    app = create_app()
+    image_path = Path("remote-input.png")
+    job = VideoGenerationJob(
+        request=GenerationRequest(
+            prompt="remote video",
+            image=ImageAsset(path=image_path, mime_type="image/png", size_bytes=5),
+        ),
+        video=GeneratedVideo(
+            storage=StorageRef(
+                uri="https://cdn.test/video.mp4",
+                mime_type="video/mp4",
+                size_bytes=10,
+            ),
+            width=512,
+            height=512,
+            fps=24,
+            num_frames=24,
+            duration_seconds=1.0,
+            model_id="remote",
+        ),
+    )
+    await get_job_repository().save(job)
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test", follow_redirects=False
+    ) as client:
+        response = await client.get(f"/api/generations/{job.id}/video")
+
+    assert response.status_code == 307
+    assert response.headers["location"] == "https://cdn.test/video.mp4"

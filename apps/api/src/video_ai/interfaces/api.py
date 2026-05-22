@@ -16,7 +16,7 @@ from fastapi import (
     UploadFile,
     status,
 )
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse, RedirectResponse, Response, StreamingResponse
 
 from video_ai.application.jobs import JobApplicationService
 from video_ai.application.metrics import MetricsService
@@ -43,6 +43,7 @@ from video_ai.interfaces.schemas import (
     SystemCapabilitiesResponse,
     SystemHealthResponse,
 )
+from video_ai.storage.urls import StorageUrlResolutionError, resolve_download_url
 
 router = APIRouter(prefix="/api", tags=["generations"])
 
@@ -365,20 +366,26 @@ async def stream_generation_events(
     return StreamingResponse(event_stream(), media_type="text/event-stream")
 
 
-@router.get("/generations/{job_id}/video")
+@router.get("/generations/{job_id}/video", response_model=None)
 async def get_generation_video(
     job_id: UUID,
     repository: JobRepository = Depends(get_job_repository),
-) -> FileResponse:
+) -> Response:
     """Download a generated video artifact."""
     job = await repository.get(job_id)
     if job is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Generation job not found")
-    if job.video is None or job.video.storage.path is None:
+    if job.video is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Generated video not available")
-    return FileResponse(
-        path=job.video.storage.path,
-        media_type=job.video.storage.mime_type,
-        filename=f"{job.id}.mp4",
-    )
+    if job.video.storage.path is not None:
+        return FileResponse(
+            path=job.video.storage.path,
+            media_type=job.video.storage.mime_type,
+            filename=f"{job.id}.mp4",
+        )
+    try:
+        download_url = resolve_download_url(job.video.storage, get_settings())
+    except StorageUrlResolutionError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, str(exc)) from exc
+    return RedirectResponse(download_url, status_code=status.HTTP_307_TEMPORARY_REDIRECT)
 
