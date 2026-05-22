@@ -1,0 +1,96 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: docker/api/Dockerfile
+    environment:
+      APP_ENV: development
+      STORAGE_ROOT: /app/.data/storage
+      VIDEO_GENERATOR_BACKEND: mock
+      VLLM_TEXT_BASE_URL: http://vllm-text:8000/v1
+      VLLM_VISION_BASE_URL: http://vllm-vision:8000/v1
+    volumes:
+      - ./.data:/app/.data
+    ports:
+      - "8000:8000"
+    profiles: ["mock", "ltx", "prod"]
+
+  web:
+    build:
+      context: .
+      dockerfile: docker/web/Dockerfile
+    ports:
+      - "5173:5173"
+    depends_on:
+      - api
+    profiles: ["mock", "ltx", "prod"]
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    profiles: ["prod"]
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: video_ai
+      POSTGRES_USER: video_ai
+      POSTGRES_PASSWORD: video_ai_dev
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    profiles: ["prod"]
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ':9001'
+    environment:
+      MINIO_ROOT_USER: video_ai
+      MINIO_ROOT_PASSWORD: video_ai_dev_password
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    profiles: ["prod"]
+
+  vllm-text:
+    image: vllm/vllm-openai:latest
+    command: >
+      --model ${VLLM_TEXT_MODEL:-Qwen/Qwen3.6-35B-A3B}
+      --host 0.0.0.0
+      --port 8000
+    ports:
+      - "8002:8000"
+    profiles: ["vllm"]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  vllm-vision:
+    image: vllm/vllm-openai:latest
+    command: >
+      --model ${VLLM_VISION_MODEL:-Qwen/Qwen2.5-VL-7B-Instruct}
+      --host 0.0.0.0
+      --port 8000
+      --limit-mm-per-prompt image=1
+    ports:
+      - "8001:8000"
+    profiles: ["vllm"]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+volumes:
+  postgres_data:
+  minio_data:
