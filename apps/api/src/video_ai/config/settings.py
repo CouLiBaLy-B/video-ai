@@ -10,6 +10,7 @@ AiProvider = Literal["mock", "vllm"]
 AgentPlannerProvider = Literal["simple", "deepagents"]
 VideoGeneratorBackend = Literal["mock", "ltx-video", "wan-i2v"]
 JobRepositoryBackend = Literal["memory", "sqlite"]
+TaskQueueBackend = Literal["fastapi", "redis-rq"]
 
 
 class Settings(BaseSettings):
@@ -24,6 +25,9 @@ class Settings(BaseSettings):
     job_repository_backend: JobRepositoryBackend = "memory"
     sqlite_database_path: Path = Field(default=Path(".data/video_ai.sqlite3"))
     max_upload_bytes: int = 10 * 1024 * 1024
+    task_queue_backend: TaskQueueBackend = "fastapi"
+    redis_url: str = "redis://localhost:6379/0"
+    rq_queue_name: str = "video-ai"
 
     # Planning/orchestration adapters. `simple` is deterministic and GPU-free.
     agent_planner_provider: AgentPlannerProvider = "simple"

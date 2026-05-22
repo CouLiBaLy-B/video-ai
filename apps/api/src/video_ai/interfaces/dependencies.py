@@ -3,8 +3,15 @@
 from functools import lru_cache
 from pathlib import Path
 
+from fastapi import BackgroundTasks
+
 from video_ai.application.jobs import JobApplicationService
 from video_ai.application.orchestrator import VideoGenerationOrchestrator
+from video_ai.application.task_queue import (
+    FastApiJobTaskQueue,
+    JobTaskQueue,
+    RedisRqJobTaskQueue,
+)
 from video_ai.config.settings import Settings, get_settings
 from video_ai.domain.ports import JobRepository
 from video_ai.infrastructure.factories import (
@@ -80,4 +87,23 @@ def _runtime_profile(settings: Settings) -> str:
         f"ai={settings.ai_provider};"
         f"{fallback};"
         f"video={settings.video_generator_backend}"
+    )
+
+
+def create_job_task_queue(
+    *,
+    background_tasks: BackgroundTasks,
+    orchestrator: VideoGenerationOrchestrator,
+    repository: JobRepository,
+) -> JobTaskQueue:
+    """Create the configured job task queue adapter."""
+    settings = get_settings()
+    if settings.task_queue_backend == "redis-rq":
+        return RedisRqJobTaskQueue(
+            redis_url=settings.redis_url, queue_name=settings.rq_queue_name
+        )
+    return FastApiJobTaskQueue(
+        background_tasks=background_tasks,
+        orchestrator=orchestrator,
+        repository=repository,
     )
