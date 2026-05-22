@@ -8,6 +8,7 @@ from fastapi import BackgroundTasks
 from video_ai.application.jobs import JobApplicationService
 from video_ai.application.orchestrator import VideoGenerationOrchestrator
 from video_ai.application.quotas import QuotaLimits, QuotaService
+from video_ai.application.safety import SafetyPolicy, SafetyService, parse_terms
 from video_ai.application.task_queue import (
     FastApiJobTaskQueue,
     JobTaskQueue,
@@ -162,4 +163,16 @@ def get_quota_service() -> QuotaService:
             max_generation_height=settings.max_generation_height,
             max_generation_frames=settings.max_generation_frames,
         ),
+    )
+
+
+def get_safety_service() -> SafetyService:
+    """Build safety service from runtime settings."""
+    settings = get_settings()
+    return SafetyService(
+        SafetyPolicy(
+            enabled=settings.safety_enabled,
+            blocked_terms=parse_terms(settings.safety_blocked_terms),
+            review_terms=parse_terms(settings.safety_review_terms),
+        )
     )

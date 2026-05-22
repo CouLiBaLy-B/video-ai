@@ -46,6 +46,9 @@ class Settings(BaseSettings):
     max_generation_width: int = 1280
     max_generation_height: int = 768
     max_generation_frames: int = 121
+    safety_enabled: bool = True
+    safety_blocked_terms: str = "child sexual,csam,terrorist,terrorism,bomb making"
+    safety_review_terms: str = "weapon,blood,violence,nudity"
     task_queue_backend: TaskQueueBackend = "fastapi"
     redis_url: str = "redis://localhost:6379/0"
     rq_queue_name: str = "video-ai"
