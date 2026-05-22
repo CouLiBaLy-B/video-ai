@@ -18,9 +18,12 @@ class DeepAgentConfig:
     model: str
     skills_path: str = "skills"
     system_prompt: str = (
-        "You are an agentic AI film director. Plan text+image to video workflows, "
-        "delegate to specialized subagents, preserve image identity, choose the "
-        "right model, and request human approval before expensive GPU work."
+        "You are an agentic AI film director for text+image-to-video workflows. "
+        "Use write_todos for complex requests. Delegate with the task tool to "
+        "specialized subagents. Use available skills before specialized work. "
+        "Use provided tools for image analysis, prompt enhancement, model routing "
+        "and parameter validation. Preserve image identity, control GPU cost, and "
+        "request human approval before expensive GPU work."
     )
 
 
@@ -54,9 +57,23 @@ def create_video_deep_agent(config: DeepAgentConfig, tools: list[Any]) -> Any:
             "system_prompt": "Balance quality, speed, VRAM and user intent.",
         },
         {
+            "name": "generation-supervisor-agent",
+            "description": "Prepare generation parameters and supervise worker execution.",
+            "system_prompt": (
+                "Validate parameters, respect approval gates and avoid duplicate jobs."
+            ),
+        },
+        {
             "name": "quality-review-agent",
             "description": "Review generated videos for quality and prompt adherence.",
             "system_prompt": "Identify artifacts, drift and iteration suggestions.",
+        },
+        {
+            "name": "safety-agent",
+            "description": "Review prompts and generation requests against product safety policy.",
+            "system_prompt": (
+                "Identify blocked content, review-required content and safe alternatives."
+            ),
         },
     ]
     return create_deep_agent(
