@@ -37,6 +37,19 @@ type JobResponse = {
   events: JobEventResponse[];
 };
 
+type ComponentHealth = {
+  status: string;
+  detail: string | null;
+};
+
+type SystemHealth = {
+  api: ComponentHealth;
+  storage: ComponentHealth;
+  job_repository: ComponentHealth;
+  vllm_text: ComponentHealth;
+  vllm_vision: ComponentHealth;
+};
+
 type SystemCapabilities = {
   agent_planner_provider: string;
   ai_provider: string;
@@ -71,6 +84,7 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [capabilities, setCapabilities] = useState<SystemCapabilities | null>(null);
+  const [health, setHealth] = useState<SystemHealth | null>(null);
   const [backend, setBackend] = useState('mock');
   const [width, setWidth] = useState(512);
   const [height, setHeight] = useState(512);
@@ -88,6 +102,10 @@ function App() {
         setCapabilities(payload);
         setBackend(payload.default_video_backend);
       })
+      .catch(() => undefined);
+    fetch('/api/system/health')
+      .then((response) => response.ok ? response.json() : null)
+      .then((payload: SystemHealth | null) => setHealth(payload))
       .catch(() => undefined);
   }, []);
 
@@ -204,6 +222,15 @@ function App() {
             <p className="capabilities-line">
               Planner: {capabilities.agent_planner_provider} · AI: {capabilities.ai_provider} · VLM: {capabilities.vision_model}
             </p>
+          )}
+          {health && (
+            <div className="health-line">
+              {Object.entries(health).map(([name, component]) => (
+                <span key={name} className={component.status === 'ok' ? 'ok' : 'warn'}>
+                  {name}: {component.status}
+                </span>
+              ))}
+            </div>
           )}
 
           <button disabled={isSubmitting}>{isSubmitting ? 'Génération...' : 'Générer la vidéo'}</button>
