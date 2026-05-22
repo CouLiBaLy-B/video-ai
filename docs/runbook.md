@@ -451,3 +451,36 @@ Decisions:
 - `needs_review`: API returns `409 Conflict` until a manual-review workflow is implemented.
 
 This is a lightweight baseline guardrail. Public deployments should replace or augment it with a real moderation provider/model for prompt, image and generated output moderation.
+
+## DeepAgents runtime mode
+
+The application can switch the workflow planner to DeepAgents:
+
+```env
+AGENT_PLANNER_PROVIDER=deepagents
+DEEPAGENTS_MODEL=openai:gpt-4o-mini
+```
+
+Install optional agent dependencies and configure the model provider credentials required by your selected model:
+
+```bash
+pip install -e '.[agents]'
+```
+
+When DeepAgents mode is enabled, the planner is created with:
+
+- specialized subagents:
+  - `vision-analysis-agent`
+  - `cinematic-prompt-agent`
+  - `model-routing-agent`
+  - `generation-supervisor-agent`
+  - `quality-review-agent`
+  - `safety-agent`
+- skills from the `skills/` directory;
+- workflow tools for:
+  - image analysis;
+  - prompt enhancement;
+  - model routing;
+  - LTX parameter validation.
+
+Important: GPU generation itself remains controlled by the typed application orchestrator, approval gate, quota service and worker queue. DeepAgents plans and delegates workflow intelligence, while the application remains authoritative for safety-critical side effects.
