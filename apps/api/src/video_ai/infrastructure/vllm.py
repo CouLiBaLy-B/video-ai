@@ -152,7 +152,10 @@ class VllmPromptEnhancer:
         messages = [
             {
                 "role": "system",
-                "content": "You are a cinematic prompt engineer for image-to-video models. Return JSON.",
+                "content": (
+                    "You are a cinematic prompt engineer for image-to-video "
+                    "models. Return JSON."
+                ),
             },
             {
                 "role": "user",

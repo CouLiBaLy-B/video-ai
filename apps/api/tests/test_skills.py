@@ -1,6 +1,5 @@
 from pathlib import Path
 
-
 REQUIRED_SKILLS = {
     "cinematic-prompting",
     "image-to-video-routing",

@@ -49,9 +49,13 @@ class VideoGenerationOrchestrator:
         await self._repository.save(current)
 
         current = await self._transition(current, JobStatus.ANALYZING, "Analyzing input image")
-        analysis = await self._vision_analyzer.analyze(current.request.image, current.request.prompt)
+        analysis = await self._vision_analyzer.analyze(
+            current.request.image, current.request.prompt
+        )
 
-        current = await self._transition(current, JobStatus.PLANNING, "Enhancing prompt and routing model")
+        current = await self._transition(
+            current, JobStatus.PLANNING, "Enhancing prompt and routing model"
+        )
         prompt = await self._prompt_enhancer.enhance(current.request.prompt, analysis)
         model = await self._model_router.select_model(current.request)
         parameters = GenerationParameters(
@@ -63,7 +67,9 @@ class VideoGenerationOrchestrator:
             fps=model.default_fps,
         )
 
-        current = await self._transition(current, JobStatus.GENERATING, f"Generating with {model.id}")
+        current = await self._transition(
+            current, JobStatus.GENERATING, f"Generating with {model.id}"
+        )
         video = await self._video_generator.generate(parameters)
 
         current = current.model_copy(update={"video": video})

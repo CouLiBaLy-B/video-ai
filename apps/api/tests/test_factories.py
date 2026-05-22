@@ -1,8 +1,10 @@
+from pathlib import Path
+
 import pytest
 
+from video_ai.agents.planners import DeepAgentsWorkflowPlanner, SimpleWorkflowPlanner
 from video_ai.config.settings import Settings
 from video_ai.domain.enums import VideoBackend
-from video_ai.agents.planners import DeepAgentsWorkflowPlanner, SimpleWorkflowPlanner
 from video_ai.infrastructure.factories import (
     create_model_router,
     create_prompt_enhancer,
@@ -51,7 +53,7 @@ def test_vllm_factories_return_vllm_adapters() -> None:
     assert isinstance(create_prompt_enhancer(settings), VllmPromptEnhancer)
 
 
-def test_video_generator_factory_returns_mock_by_default(tmp_path) -> None:  # type: ignore[no-untyped-def]
+def test_video_generator_factory_returns_mock_by_default(tmp_path: Path) -> None:
     storage = LocalStorageService(tmp_path)
 
     generator = create_video_generator(Settings(video_generator_backend="mock"), storage)
@@ -59,7 +61,7 @@ def test_video_generator_factory_returns_mock_by_default(tmp_path) -> None:  # t
     assert isinstance(generator, MockVideoGenerator)
 
 
-def test_video_generator_factory_returns_ltx(tmp_path) -> None:  # type: ignore[no-untyped-def]
+def test_video_generator_factory_returns_ltx(tmp_path: Path) -> None:
     storage = LocalStorageService(tmp_path)
 
     generator = create_video_generator(Settings(video_generator_backend="ltx-video"), storage)
@@ -67,7 +69,7 @@ def test_video_generator_factory_returns_ltx(tmp_path) -> None:  # type: ignore[
     assert isinstance(generator, LtxVideoGenerator)
 
 
-def test_video_generator_factory_fails_fast_for_wan(tmp_path) -> None:  # type: ignore[no-untyped-def]
+def test_video_generator_factory_fails_fast_for_wan(tmp_path: Path) -> None:
     storage = LocalStorageService(tmp_path)
 
     with pytest.raises(NotImplementedError):

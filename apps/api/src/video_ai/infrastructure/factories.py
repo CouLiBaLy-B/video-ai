@@ -7,12 +7,18 @@ from video_ai.agents.planners import DeepAgentsWorkflowPlanner, SimpleWorkflowPl
 from video_ai.config.settings import Settings
 from video_ai.domain.enums import VideoBackend
 from video_ai.domain.models import ModelProfile
-from video_ai.domain.ports import PromptEnhancer, StorageService, VideoGenerator, VideoModelRouter, VisionAnalyzer, WorkflowPlanner
+from video_ai.domain.ports import (
+    PromptEnhancer,
+    StorageService,
+    VideoGenerator,
+    VideoModelRouter,
+    VisionAnalyzer,
+    WorkflowPlanner,
+)
 from video_ai.infrastructure.ltx_video import LTX_VIDEO_2B_DISTILLED_PROFILE, LtxVideoGenerator
 from video_ai.infrastructure.simple_ai import SimplePromptEnhancer, SimpleVisionAnalyzer
 from video_ai.infrastructure.video import MockVideoGenerator, StaticVideoModelRouter
 from video_ai.infrastructure.vllm import VllmChatGateway, VllmPromptEnhancer, VllmVisionAnalyzer
-
 
 WAN_I2V_A14B_PROFILE = ModelProfile(
     id="Wan-AI/Wan2.2-I2V-A14B",

@@ -64,7 +64,11 @@ class LtxVideoGenerator:
             num_inference_steps=parameters.inference_steps,
             guidance_scale=parameters.guidance_scale,
         )
-        frames = output.frames[0] if output.frames and isinstance(output.frames[0], list) else output.frames
+        frames = (
+            output.frames[0]
+            if output.frames and isinstance(output.frames[0], list)
+            else output.frames
+        )
         with TemporaryDirectory() as tmpdir:
             output_path = Path(tmpdir) / "ltx-video.mp4"
             self._export_to_video(frames, output_path, parameters.fps)

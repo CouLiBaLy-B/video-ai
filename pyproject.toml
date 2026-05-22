@@ -41,7 +41,7 @@ src = ["apps/api/src", "apps/api/tests"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "N", "ANN", "ASYNC", "S"]
-ignore = ["ANN101", "ANN102"]
+ignore = ["ANN401", "B008", "S104"]
 
 [tool.mypy]
 python_version = "3.11"
@@ -54,3 +54,6 @@ addopts = "-q"
 testpaths = ["apps/api/tests"]
 pythonpath = ["apps/api/src"]
 asyncio_mode = "auto"
+
+[tool.ruff.lint.per-file-ignores]
+"apps/api/tests/**/*.py" = ["S101"]

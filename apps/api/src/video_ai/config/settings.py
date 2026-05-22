@@ -6,7 +6,6 @@ from typing import Literal
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-
 AiProvider = Literal["mock", "vllm"]
 AgentPlannerProvider = Literal["simple", "deepagents"]
 VideoGeneratorBackend = Literal["mock", "ltx-video", "wan-i2v"]

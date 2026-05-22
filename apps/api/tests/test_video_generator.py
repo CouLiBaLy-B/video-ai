@@ -1,7 +1,12 @@
 from pathlib import Path
 
 from video_ai.domain.enums import VideoBackend
-from video_ai.domain.models import EnhancedPrompt, GenerationParameters, GenerationRequest, ImageAsset
+from video_ai.domain.models import (
+    EnhancedPrompt,
+    GenerationParameters,
+    GenerationRequest,
+    ImageAsset,
+)
 from video_ai.infrastructure.video import (
     HeuristicQualityReviewer,
     MockVideoGenerator,

@@ -8,9 +8,9 @@ from video_ai.config.settings import Settings, get_settings
 from video_ai.infrastructure.factories import (
     create_model_router,
     create_prompt_enhancer,
-    create_workflow_planner,
     create_video_generator,
     create_vision_analyzer,
+    create_workflow_planner,
 )
 from video_ai.infrastructure.video import HeuristicQualityReviewer
 from video_ai.storage.local import LocalStorageService

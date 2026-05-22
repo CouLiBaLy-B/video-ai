@@ -20,11 +20,17 @@ class SimpleWorkflowPlanner:
         """Return the standard video generation plan."""
         _ = job
         return AgentPlan(
-            summary="Standard image-to-video workflow using analysis, prompt enhancement, routing, generation and review.",
+            summary=(
+                "Standard image-to-video workflow using analysis, prompt enhancement, "
+                "routing, generation and review."
+            ),
             steps=[
                 AgentPlanStep(
                     name="analyze-image",
-                    description="Understand the uploaded image and extract preservation constraints.",
+                    description=(
+                        "Understand the uploaded image and extract preservation "
+                        "constraints."
+                    ),
                     agent="vision-analysis-agent",
                 ),
                 AgentPlanStep(
