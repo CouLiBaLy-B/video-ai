@@ -49,6 +49,8 @@ class Settings(BaseSettings):
     safety_enabled: bool = True
     safety_blocked_terms: str = "child sexual,csam,terrorist,terrorism,bomb making"
     safety_review_terms: str = "weapon,blood,violence,nudity"
+    sentry_dsn: str | None = None
+    sentry_traces_sample_rate: float = 0.1
     task_queue_backend: TaskQueueBackend = "fastapi"
     redis_url: str = "redis://localhost:6379/0"
     rq_queue_name: str = "video-ai"

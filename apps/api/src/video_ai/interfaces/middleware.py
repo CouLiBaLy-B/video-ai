@@ -12,6 +12,8 @@ from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoin
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
+from video_ai.infrastructure.prometheus import GLOBAL_PROMETHEUS_METRICS
+
 logger = logging.getLogger("video_ai.http")
 
 
@@ -39,6 +41,12 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
             raise
         duration_ms = round((time.perf_counter() - start) * 1000, 2)
         response.headers["x-request-id"] = request_id
+        GLOBAL_PROMETHEUS_METRICS.record_http_request(
+            method=request.method,
+            path=request.url.path,
+            status_code=response.status_code,
+            duration_ms=duration_ms,
+        )
         logger.info(
             "request_completed",
             extra={
