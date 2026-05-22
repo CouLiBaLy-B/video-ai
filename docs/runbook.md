@@ -71,3 +71,44 @@ AI_PROVIDER=vllm
 VLLM_TEXT_BASE_URL=http://localhost:8000/v1
 VLLM_VISION_BASE_URL=http://localhost:8001/v1
 ```
+
+## LTX-Video production preparation
+
+Validate parameters before an expensive GPU run:
+
+```bash
+curl -X POST http://localhost:8000/api/system/ltx/validate \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "width": 768,
+    "height": 512,
+    "num_frames": 121,
+    "fps": 24,
+    "inference_steps": 30,
+    "guidance_scale": 3.5
+  }'
+```
+
+Recommended first GPU configuration:
+
+```env
+VIDEO_GENERATOR_BACKEND=ltx-video
+LTX_VIDEO_MODEL_ID=Lightricks/LTX-Video
+LTX_VIDEO_DEVICE=cuda
+LTX_VIDEO_TORCH_DTYPE=bfloat16
+```
+
+Install video dependencies in a CUDA machine:
+
+```bash
+pip install -e '.[video]'
+```
+
+Operational notes:
+
+- Prefer dimensions divisible by 32.
+- Prefer frame counts of the form `8n+1`, for example `49`, `73`, `121`.
+- Start with `768x512`, `121` frames, `24` FPS, `20-30` steps.
+- Use a fixed seed for reproducibility.
+- If `LTX_VIDEO_DEVICE=cuda` and CUDA is not available, the adapter fails fast with a clear runtime error.
+- The adapter only forwards allowlisted advanced kwargs from `GenerationParameters.extra`.
