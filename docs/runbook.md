@@ -112,3 +112,26 @@ Operational notes:
 - Use a fixed seed for reproducibility.
 - If `LTX_VIDEO_DEVICE=cuda` and CUDA is not available, the adapter fails fast with a clear runtime error.
 - The adapter only forwards allowlisted advanced kwargs from `GenerationParameters.extra`.
+
+## Human approval for GPU jobs
+
+Real GPU backends such as `ltx-video` are paused before generation and placed in:
+
+```text
+waiting_for_approval
+```
+
+Approve the job:
+
+```bash
+curl -X POST http://localhost:8000/api/generations/<job_id>/approve
+```
+
+Reject/cancel the job:
+
+```bash
+curl -X POST http://localhost:8000/api/generations/<job_id>/reject
+```
+
+The UI displays a validation panel with `Valider la génération GPU` when approval is required.
+Mock generations do not require approval and continue automatically.
