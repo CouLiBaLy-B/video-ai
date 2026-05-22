@@ -431,3 +431,23 @@ Examples of rejected requests:
 - frames above `MAX_GENERATION_FRAMES`.
 
 Anonymous/mock local mode still enforces generation parameter bounds, while per-user quotas require a `user_id` from authentication.
+
+## Content safety policy
+
+A baseline prompt safety layer can be configured with keyword policies:
+
+```env
+SAFETY_ENABLED=true
+SAFETY_BLOCKED_TERMS=child sexual,csam,terrorist,terrorism,bomb making
+SAFETY_REVIEW_TERMS=weapon,blood,violence,nudity
+```
+
+Generation creation, rerun and seed variant endpoints evaluate the prompt before queueing work.
+
+Decisions:
+
+- `allowed`: request continues;
+- `blocked`: API returns `403 Forbidden`;
+- `needs_review`: API returns `409 Conflict` until a manual-review workflow is implemented.
+
+This is a lightweight baseline guardrail. Public deployments should replace or augment it with a real moderation provider/model for prompt, image and generated output moderation.
