@@ -79,24 +79,54 @@ class FastApiJobTaskQueue:
 class RedisRqJobTaskQueue:
     """JobTaskQueue adapter backed by Redis Queue (RQ)."""
 
-    def __init__(self, *, redis_url: str, queue_name: str) -> None:
+    def __init__(
+        self,
+        *,
+        redis_url: str,
+        queue_name: str,
+        job_timeout_seconds: int = 3600,
+        result_ttl_seconds: int = 86_400,
+        failure_ttl_seconds: int = 604_800,
+        retry_max: int = 3,
+        retry_intervals_seconds: list[int] | None = None,
+    ) -> None:
         try:
             from redis import Redis
-            from rq import Queue
+            from rq import Queue, Retry
         except ImportError as exc:  # pragma: no cover - optional worker dependency
             raise RuntimeError(
                 "Install the 'worker' extra to use TASK_QUEUE_BACKEND=redis-rq"
             ) from exc
         self._queue = Queue(queue_name, connection=Redis.from_url(redis_url))
+        self._job_timeout_seconds = job_timeout_seconds
+        self._result_ttl_seconds = result_ttl_seconds
+        self._failure_ttl_seconds = failure_ttl_seconds
+        self._retry = Retry(
+            max=retry_max, interval=retry_intervals_seconds or [30, 120, 300]
+        )
 
     def enqueue_generation(self, job_id: UUID) -> str:
         """Schedule a newly created generation job in RQ."""
-        job = self._queue.enqueue("video_ai.workers.jobs.run_job_task", str(job_id))
+        job = self._queue.enqueue(
+            "video_ai.workers.jobs.run_job_task",
+            str(job_id),
+            job_timeout=self._job_timeout_seconds,
+            result_ttl=self._result_ttl_seconds,
+            failure_ttl=self._failure_ttl_seconds,
+            retry=self._retry,
+        )
         return str(job.id)
 
     def enqueue_approved_generation(self, job_id: UUID) -> str:
         """Schedule an approved generation job in RQ."""
-        job = self._queue.enqueue("video_ai.workers.jobs.run_approved_job_task", str(job_id))
+        job = self._queue.enqueue(
+            "video_ai.workers.jobs.run_approved_job_task",
+            str(job_id),
+            job_timeout=self._job_timeout_seconds,
+            result_ttl=self._result_ttl_seconds,
+            failure_ttl=self._failure_ttl_seconds,
+            retry=self._retry,
+        )
         return str(job.id)
 
 

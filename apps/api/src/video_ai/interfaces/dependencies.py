@@ -108,8 +108,19 @@ def create_job_task_queue(
     """Create the configured job task queue adapter."""
     settings = get_settings()
     if settings.task_queue_backend == "redis-rq":
+        retry_intervals = [
+            int(item.strip())
+            for item in settings.rq_retry_intervals_seconds.split(",")
+            if item.strip()
+        ]
         return RedisRqJobTaskQueue(
-            redis_url=settings.redis_url, queue_name=settings.rq_queue_name
+            redis_url=settings.redis_url,
+            queue_name=settings.rq_queue_name,
+            job_timeout_seconds=settings.rq_job_timeout_seconds,
+            result_ttl_seconds=settings.rq_result_ttl_seconds,
+            failure_ttl_seconds=settings.rq_failure_ttl_seconds,
+            retry_max=settings.rq_retry_max,
+            retry_intervals_seconds=retry_intervals,
         )
     return FastApiJobTaskQueue(
         background_tasks=background_tasks,

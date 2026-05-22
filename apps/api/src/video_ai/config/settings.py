@@ -33,6 +33,11 @@ class Settings(BaseSettings):
     task_queue_backend: TaskQueueBackend = "fastapi"
     redis_url: str = "redis://localhost:6379/0"
     rq_queue_name: str = "video-ai"
+    rq_job_timeout_seconds: int = 3600
+    rq_result_ttl_seconds: int = 86_400
+    rq_failure_ttl_seconds: int = 604_800
+    rq_retry_max: int = 3
+    rq_retry_intervals_seconds: str = "30,120,300"
 
     # Planning/orchestration adapters. `simple` is deterministic and GPU-free.
     agent_planner_provider: AgentPlannerProvider = "simple"
