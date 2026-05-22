@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  backend-quality:
+    name: Backend quality
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install backend dependencies
+        run: python -m pip install -e '.[dev,db]'
+
+      - name: Run environment doctor
+        run: python scripts/doctor.py
+
+      - name: Lint backend
+        run: python -m ruff check scripts apps/api/src apps/api/tests migrations
+
+      - name: Typecheck backend
+        run: python -m mypy apps/api/src/video_ai
+
+      - name: Test backend
+        run: python -m pytest apps/api/tests
+
+  frontend-build:
+    name: Frontend build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: apps/web
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: apps/web
+        run: npm run build
+
+  docker-build:
+    name: Docker build smoke test
+    runs-on: ubuntu-latest
+    needs: [backend-quality, frontend-build]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build API image
+        run: docker build -f docker/api/Dockerfile -t video-ai-api:ci .
+
+      - name: Build web image
+        run: docker build -f docker/web/Dockerfile -t video-ai-web:ci .
