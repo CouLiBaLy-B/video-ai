@@ -1,0 +1,56 @@
+[project]
+name = "video-ai"
+version = "0.1.0"
+description = "Agentic text+image to video generation platform using DeepAgents, vLLM and open-source video models."
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.115.0",
+  "uvicorn[standard]>=0.30.0",
+  "pydantic>=2.8.0",
+  "pydantic-settings>=2.4.0",
+  "python-multipart>=0.0.9",
+  "httpx>=0.27.0",
+  "openai>=1.40.0",
+  "pillow>=10.4.0",
+]
+
+[project.optional-dependencies]
+agents = [
+  "deepagents>=0.1.0",
+  "langchain>=0.3.0",
+  "langgraph>=0.2.0",
+]
+video = [
+  "torch>=2.3.0",
+  "diffusers>=0.33.0",
+  "transformers>=4.45.0",
+  "accelerate>=0.33.0",
+  "imageio>=2.35.0",
+]
+dev = [
+  "pytest>=8.3.0",
+  "pytest-asyncio>=0.23.0",
+  "ruff>=0.6.0",
+  "mypy>=1.11.0",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["apps/api/src", "apps/api/tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "N", "ANN", "ASYNC", "S"]
+ignore = ["ANN101", "ANN102"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+mypy_path = "apps/api/src"
+packages = ["video_ai"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["apps/api/tests"]
+pythonpath = ["apps/api/src"]
+asyncio_mode = "auto"
