@@ -5,11 +5,10 @@ from __future__ import annotations
 import logging
 import time
 from collections import defaultdict, deque
-from collections.abc import Callable
 from dataclasses import dataclass
 from uuid import uuid4
 
-from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
@@ -19,13 +18,13 @@ logger = logging.getLogger("video_ai.http")
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
     """Attach request ids and emit structured request timing logs."""
 
-    async def dispatch(self, request: Request, call_next: Callable[[Request], object]) -> Response:
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         """Process request and log duration."""
         request_id = request.headers.get("x-request-id", str(uuid4()))
         start = time.perf_counter()
         response: Response
         try:
-            response = await call_next(request)  # type: ignore[misc]
+            response = await call_next(request)
         except Exception:
             duration_ms = round((time.perf_counter() - start) * 1000, 2)
             logger.exception(
@@ -56,9 +55,9 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """Add baseline browser security headers to every response."""
 
-    async def dispatch(self, request: Request, call_next: Callable[[Request], object]) -> Response:
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         """Apply security headers."""
-        response = await call_next(request)  # type: ignore[misc]
+        response = await call_next(request)
         response.headers.setdefault("x-content-type-options", "nosniff")
         response.headers.setdefault("x-frame-options", "DENY")
         response.headers.setdefault("referrer-policy", "no-referrer")
@@ -90,10 +89,10 @@ class InMemoryRateLimitMiddleware(BaseHTTPMiddleware):
         self._config = config
         self._requests: dict[str, deque[float]] = defaultdict(deque)
 
-    async def dispatch(self, request: Request, call_next: Callable[[Request], object]) -> Response:
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         """Reject requests exceeding the configured per-client limit."""
         if not self._config.enabled or request.url.path == "/health":
-            return await call_next(request)  # type: ignore[misc]
+            return await call_next(request)
 
         client_key = self._client_key(request)
         now = time.monotonic()
@@ -111,7 +110,7 @@ class InMemoryRateLimitMiddleware(BaseHTTPMiddleware):
             )
 
         bucket.append(now)
-        response = await call_next(request)  # type: ignore[misc]
+        response = await call_next(request)
         response.headers["x-ratelimit-limit"] = str(self._config.requests)
         response.headers["x-ratelimit-remaining"] = str(max(0, self._config.requests - len(bucket)))
         return response
