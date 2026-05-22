@@ -347,3 +347,32 @@ Then in another shell create a mock job through the UI or API and verify that:
 4. `/api/system/metrics` shows the completed job.
 
 For local `mock` profile without Postgres/Redis, the API defaults to `JOB_REPOSITORY_BACKEND=memory` and `TASK_QUEUE_BACKEND=fastapi`.
+
+
+## S3 / MinIO object storage
+
+Use S3-compatible storage for production assets instead of local filesystem.
+
+Configuration:
+
+```env
+STORAGE_BACKEND=s3
+S3_BUCKET=video-ai-assets
+S3_ENDPOINT_URL=http://localhost:9000
+S3_REGION=us-east-1
+S3_ACCESS_KEY_ID=video_ai
+S3_SECRET_ACCESS_KEY=video_ai_dev_password
+S3_PUBLIC_BASE_URL=http://localhost:9000/video-ai-assets
+```
+
+Install storage dependencies:
+
+```bash
+pip install -e '.[storage]'
+```
+
+Docker Compose production profile starts MinIO and an init container that creates the bucket:
+
+```bash
+STORAGE_BACKEND=s3 docker compose --profile prod up --build api worker redis postgres minio minio-init
+```
