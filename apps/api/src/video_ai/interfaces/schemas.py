@@ -8,7 +8,31 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict
 
 from video_ai.domain.enums import JobStatus
-from video_ai.domain.models import VideoGenerationJob
+from video_ai.domain.models import AgentPlanStep, JobEvent, VideoGenerationJob
+
+
+class PlanStepResponse(BaseModel):
+    """Public representation of an agentic plan step."""
+
+    name: str
+    description: str
+    agent: str
+
+    @classmethod
+    def from_step(cls, step: AgentPlanStep) -> PlanStepResponse:
+        return cls(name=step.name, description=step.description, agent=step.agent)
+
+
+class JobEventResponse(BaseModel):
+    """Public representation of a job lifecycle event."""
+
+    status: JobStatus
+    message: str
+    created_at: datetime
+
+    @classmethod
+    def from_event(cls, event: JobEvent) -> JobEventResponse:
+        return cls(status=event.status, message=event.message, created_at=event.created_at)
 
 
 class JobResponse(BaseModel):
@@ -23,11 +47,19 @@ class JobResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     video_url: str | None = None
+    plan_steps: list[PlanStepResponse] = []
+    events: list[JobEventResponse] = []
 
     @classmethod
     def from_job(cls, job: VideoGenerationJob) -> JobResponse:
         """Map a domain job to an API response."""
         video_url = f"/api/generations/{job.id}/video" if job.video else None
+        plan_steps = (
+            [PlanStepResponse.from_step(step) for step in job.plan.steps]
+            if job.plan is not None
+            else []
+        )
+        events = [JobEventResponse.from_event(event) for event in job.events]
         return cls(
             id=job.id,
             status=job.status,
@@ -36,6 +68,8 @@ class JobResponse(BaseModel):
             created_at=job.created_at,
             updated_at=job.updated_at,
             video_url=video_url,
+            plan_steps=plan_steps,
+            events=events,
         )
 
 

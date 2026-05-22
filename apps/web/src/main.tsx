@@ -13,6 +13,18 @@ type JobStatus =
   | 'failed'
   | 'cancelled';
 
+type PlanStepResponse = {
+  name: string;
+  description: string;
+  agent: string;
+};
+
+type JobEventResponse = {
+  status: JobStatus;
+  message: string;
+  created_at: string;
+};
+
 type JobResponse = {
   id: string;
   status: JobStatus;
@@ -21,6 +33,8 @@ type JobResponse = {
   created_at: string;
   updated_at: string;
   video_url: string | null;
+  plan_steps: PlanStepResponse[];
+  events: JobEventResponse[];
 };
 
 type TimelineItem = {
@@ -124,6 +138,28 @@ function App() {
                 <li key={item.label} className={item.status}>{item.label}</li>
               ))}
             </ol>
+            {job.plan_steps.length > 0 && (
+              <div className="plan-card">
+                <h3>Plan agentique</h3>
+                {job.plan_steps.map((step) => (
+                  <div key={step.name} className="plan-step">
+                    <span>{step.agent}</span>
+                    <strong>{step.name}</strong>
+                    <p>{step.description}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+            {job.events.length > 0 && (
+              <div className="event-card">
+                <h3>Journal d’exécution</h3>
+                {job.events.map((event) => (
+                  <p key={`${event.status}-${event.created_at}`}>
+                    <span>{statusLabels[event.status]}</span> — {event.message}
+                  </p>
+                ))}
+              </div>
+            )}
             {job.video_url && (
               <div className="video-card">
                 <video src={job.video_url} controls />

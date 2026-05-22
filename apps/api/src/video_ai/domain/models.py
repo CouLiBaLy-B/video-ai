@@ -158,6 +158,14 @@ class QualityReport(DomainModel):
     accepted: bool
 
 
+class JobEvent(DomainModel):
+    """Auditable event emitted during a generation workflow."""
+
+    status: JobStatus
+    message: str
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
 class VideoGenerationJob(DomainModel):
     """Aggregate root for a generation workflow."""
 
@@ -168,15 +176,18 @@ class VideoGenerationJob(DomainModel):
     plan: AgentPlan | None = None
     video: GeneratedVideo | None = None
     quality_report: QualityReport | None = None
+    events: list[JobEvent] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     def transition(self, status: JobStatus, reason: str | None = None) -> VideoGenerationJob:
-        """Return a new job with an updated status."""
+        """Return a new job with an updated status and event entry."""
+        message = reason or status.value
         return self.model_copy(
             update={
                 "status": status,
                 "status_reason": reason,
+                "events": [*self.events, JobEvent(status=status, message=message)],
                 "updated_at": datetime.now(UTC),
             }
         )
