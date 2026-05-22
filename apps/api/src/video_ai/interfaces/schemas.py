@@ -103,6 +103,26 @@ class SystemHealthResponse(BaseModel):
     vllm_vision: ComponentHealthResponse
 
 
+class LtxValidationRequest(BaseModel):
+    """LTX-Video dry-run validation request."""
+
+    width: int = 768
+    height: int = 512
+    num_frames: int = 121
+    fps: int = 24
+    inference_steps: int = 30
+    guidance_scale: float = 3.5
+
+
+class LtxValidationResponse(BaseModel):
+    """LTX-Video dry-run validation response."""
+
+    valid: bool
+    errors: list[str]
+    warnings: list[str]
+    recommended: dict[str, int | float | str]
+
+
 class ErrorResponse(BaseModel):
     """Error payload."""
 

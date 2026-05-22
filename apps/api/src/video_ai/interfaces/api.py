@@ -24,11 +24,14 @@ from video_ai.config.settings import get_settings
 from video_ai.domain.enums import JobStatus, VideoBackend
 from video_ai.domain.ports import JobRepository
 from video_ai.infrastructure.image_validation import ImageValidationError, ImageValidationService
+from video_ai.infrastructure.ltx_video import LtxVideoParameterValidator
 from video_ai.infrastructure.vllm import VllmHealthChecker
 from video_ai.interfaces.dependencies import get_job_repository, get_job_service, get_orchestrator
 from video_ai.interfaces.schemas import (
     ComponentHealthResponse,
     JobResponse,
+    LtxValidationRequest,
+    LtxValidationResponse,
     SystemCapabilitiesResponse,
     SystemHealthResponse,
 )
@@ -87,6 +90,25 @@ async def get_system_health(
         job_repository=repository_status,
         vllm_text=ComponentHealthResponse(status="ok" if text_ok else "unavailable"),
         vllm_vision=ComponentHealthResponse(status="ok" if vision_ok else "unavailable"),
+    )
+
+
+@router.post("/system/ltx/validate", response_model=LtxValidationResponse)
+async def validate_ltx_parameters(request: LtxValidationRequest) -> LtxValidationResponse:
+    """Dry-run validate LTX-Video parameters before a costly GPU generation."""
+    result = LtxVideoParameterValidator().validate(
+        width=request.width,
+        height=request.height,
+        num_frames=request.num_frames,
+        fps=request.fps,
+        inference_steps=request.inference_steps,
+        guidance_scale=request.guidance_scale,
+    )
+    return LtxValidationResponse(
+        valid=result.valid,
+        errors=result.errors,
+        warnings=result.warnings,
+        recommended=result.recommended,
     )
 
 

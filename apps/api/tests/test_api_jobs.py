@@ -37,6 +37,20 @@ async def test_system_health_endpoint() -> None:
     assert payload["vllm_text"]["status"] in {"ok", "unavailable"}
 
 
+async def test_ltx_validation_endpoint() -> None:
+    app = create_app()
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post(
+            "/api/system/ltx/validate",
+            json={"width": 777, "height": 512, "num_frames": 120},
+        )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["valid"] is False
+    assert "width" in payload["recommended"]
+
+
 async def test_create_get_and_download_generation_job() -> None:
     app = create_app()
     files = {"image": ("input.png", png_bytes(), "image/png")}
