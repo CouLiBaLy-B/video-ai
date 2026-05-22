@@ -20,6 +20,11 @@ from fastapi.responses import FileResponse, StreamingResponse
 
 from video_ai.application.jobs import JobApplicationService
 from video_ai.application.orchestrator import VideoGenerationOrchestrator
+from video_ai.application.task_queue import (
+    FastApiBackgroundTaskQueue,
+    run_approved_orchestrator_job,
+    run_orchestrator_job,
+)
 from video_ai.config.settings import get_settings
 from video_ai.domain.enums import JobStatus, VideoBackend
 from video_ai.domain.ports import JobRepository
@@ -162,7 +167,12 @@ async def create_generation(
         guidance_scale=guidance_scale,
         inference_steps=inference_steps,
     )
-    background_tasks.add_task(_run_orchestrator_safely, orchestrator, job.id)
+    queue = FastApiBackgroundTaskQueue(background_tasks)
+    queue.enqueue(
+        lambda: run_orchestrator_job(
+            orchestrator=orchestrator, repository=get_job_repository(), job_id=job.id
+        )
+    )
     return JobResponse.from_job(job)
 
 
@@ -202,7 +212,12 @@ async def approve_generation(
         raise HTTPException(status.HTTP_409_CONFLICT, "Generation is not waiting for approval")
     approved = job.transition(JobStatus.QUEUED, "Human approved GPU generation")
     await repository.save(approved)
-    background_tasks.add_task(_run_approved_orchestrator_safely, orchestrator, job.id)
+    queue = FastApiBackgroundTaskQueue(background_tasks)
+    queue.enqueue(
+        lambda: run_approved_orchestrator_job(
+            orchestrator=orchestrator, repository=get_job_repository(), job_id=job.id
+        )
+    )
     return JobResponse.from_job(approved)
 
 
@@ -220,6 +235,24 @@ async def reject_generation(
         raise HTTPException(status.HTTP_409_CONFLICT, "Generation is not waiting for approval")
     rejected = await orchestrator.reject(job)
     return JobResponse.from_job(rejected)
+
+
+@router.post("/generations/{job_id}/cancel", response_model=JobResponse)
+async def cancel_generation(
+    job_id: UUID,
+    repository: JobRepository = Depends(get_job_repository),
+) -> JobResponse:
+    """Cancel a queued or approval-waiting generation job."""
+    job = await repository.get(job_id)
+    if job is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Generation job not found")
+    if job.status in {JobStatus.COMPLETED, JobStatus.FAILED, JobStatus.CANCELLED}:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Generation cannot be cancelled")
+    cancelled = job.model_copy(update={"pending_parameters": None}).transition(
+        JobStatus.CANCELLED, "Generation cancelled by user"
+    )
+    await repository.save(cancelled)
+    return JobResponse.from_job(cancelled)
 
 
 @router.get("/generations/{job_id}/events")
@@ -263,32 +296,3 @@ async def get_generation_video(
         filename=f"{job.id}.mp4",
     )
 
-
-async def _run_orchestrator_safely(
-    orchestrator: VideoGenerationOrchestrator,
-    job_id: UUID,
-) -> None:
-    repository = get_job_repository()
-    job = await repository.get(job_id)
-    if job is None:
-        return
-    try:
-        await orchestrator.run(job)
-    except Exception as exc:  # pragma: no cover - defensive runtime guard
-        failed = job.transition(JobStatus.FAILED, f"Generation failed: {exc}")
-        await repository.save(failed)
-
-
-async def _run_approved_orchestrator_safely(
-    orchestrator: VideoGenerationOrchestrator,
-    job_id: UUID,
-) -> None:
-    repository = get_job_repository()
-    job = await repository.get(job_id)
-    if job is None:
-        return
-    try:
-        await orchestrator.run_approved(job)
-    except Exception as exc:  # pragma: no cover - defensive runtime guard
-        failed = job.transition(JobStatus.FAILED, f"Approved generation failed: {exc}")
-        await repository.save(failed)
