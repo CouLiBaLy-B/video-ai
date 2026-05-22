@@ -9,7 +9,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 AiProvider = Literal["mock", "vllm"]
 AgentPlannerProvider = Literal["simple", "deepagents"]
 VideoGeneratorBackend = Literal["mock", "ltx-video", "wan-i2v"]
-JobRepositoryBackend = Literal["memory", "sqlite"]
+JobRepositoryBackend = Literal["memory", "sqlite", "postgres"]
 TaskQueueBackend = Literal["fastapi", "redis-rq"]
 
 
@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     storage_root: Path = Field(default=Path(".data/storage"))
     job_repository_backend: JobRepositoryBackend = "memory"
     sqlite_database_path: Path = Field(default=Path(".data/video_ai.sqlite3"))
+    database_url: str = "postgresql+psycopg://video_ai:video_ai_dev@localhost:5432/video_ai"
     max_upload_bytes: int = 10 * 1024 * 1024
     task_queue_backend: TaskQueueBackend = "fastapi"
     redis_url: str = "redis://localhost:6379/0"

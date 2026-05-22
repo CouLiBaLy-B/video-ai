@@ -24,6 +24,7 @@ from video_ai.infrastructure.factories import (
 from video_ai.infrastructure.video import HeuristicQualityReviewer
 from video_ai.storage.local import LocalStorageService
 from video_ai.storage.memory import InMemoryJobRepository
+from video_ai.storage.sqlalchemy_repository import SqlAlchemyJobRepository
 from video_ai.storage.sqlite import SQLiteJobRepository
 
 
@@ -39,9 +40,17 @@ def get_sqlite_job_repository(database_path: str) -> SQLiteJobRepository:
     return SQLiteJobRepository(Path(database_path))
 
 
+@lru_cache(maxsize=1)
+def get_postgres_job_repository(database_url: str) -> SqlAlchemyJobRepository:
+    """Return a SQLAlchemy/Postgres-backed job repository."""
+    return SqlAlchemyJobRepository(database_url)
+
+
 def get_job_repository() -> JobRepository:
     """Return the configured job repository."""
     settings = get_settings()
+    if settings.job_repository_backend == "postgres":
+        return get_postgres_job_repository(settings.database_url)
     if settings.job_repository_backend == "sqlite":
         return get_sqlite_job_repository(str(settings.sqlite_database_path))
     return get_memory_job_repository()
