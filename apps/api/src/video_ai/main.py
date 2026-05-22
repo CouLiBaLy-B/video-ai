@@ -3,12 +3,16 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from video_ai.infrastructure.logging import configure_logging
 from video_ai.interfaces.api import router
+from video_ai.interfaces.middleware import RequestLoggingMiddleware
 
 
 def create_app() -> FastAPI:
     """Create and configure the FastAPI app."""
+    configure_logging()
     app = FastAPI(title="Video AI", version="0.1.0")
+    app.add_middleware(RequestLoggingMiddleware)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["http://localhost:5173", "http://localhost:3000"],
