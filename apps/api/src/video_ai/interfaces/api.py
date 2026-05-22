@@ -21,6 +21,7 @@ from fastapi.responses import FileResponse, RedirectResponse, Response, Streamin
 from video_ai.application.jobs import JobApplicationService
 from video_ai.application.metrics import MetricsService
 from video_ai.application.orchestrator import VideoGenerationOrchestrator
+from video_ai.application.quotas import QuotaExceededError, QuotaService
 from video_ai.config.settings import get_settings
 from video_ai.domain.enums import JobStatus, VideoBackend
 from video_ai.domain.models import VideoGenerationJob
@@ -34,6 +35,7 @@ from video_ai.interfaces.dependencies import (
     get_job_repository,
     get_job_service,
     get_orchestrator,
+    get_quota_service,
 )
 from video_ai.interfaces.schemas import (
     ComponentHealthResponse,
@@ -162,6 +164,7 @@ async def create_generation(
     guidance_scale: float | None = Form(default=None),
     inference_steps: int | None = Form(default=None),
     user: UserContext = Depends(get_current_user),
+    quota_service: QuotaService = Depends(get_quota_service),
     service: JobApplicationService = Depends(get_job_service),
     orchestrator: VideoGenerationOrchestrator = Depends(get_orchestrator),
 ) -> JobResponse:
@@ -180,6 +183,16 @@ async def create_generation(
             else status.HTTP_415_UNSUPPORTED_MEDIA_TYPE
         )
         raise HTTPException(status_code, str(exc)) from exc
+
+    try:
+        await quota_service.validate_create(
+            user_id=user.user_id,
+            width=width,
+            height=height,
+            num_frames=num_frames,
+        )
+    except QuotaExceededError as exc:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, str(exc)) from exc
 
     job = await service.create_generation_job(
         prompt=prompt,
@@ -244,12 +257,23 @@ async def rerun_generation(
     repository: JobRepository = Depends(get_job_repository),
     orchestrator: VideoGenerationOrchestrator = Depends(get_orchestrator),
     user: UserContext = Depends(get_current_user),
+    quota_service: QuotaService = Depends(get_quota_service),
 ) -> JobResponse:
     """Create a new generation job using the same request and preferences."""
     source = await repository.get(job_id)
     if source is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Generation job not found")
     ensure_job_access(source, user)
+    prefs = source.request.preferences
+    try:
+        await quota_service.validate_create(
+            user_id=user.user_id,
+            width=prefs.width,
+            height=prefs.height,
+            num_frames=prefs.num_frames,
+        )
+    except QuotaExceededError as exc:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, str(exc)) from exc
     new_job = VideoGenerationJob(request=source.request)
     await repository.save(new_job)
     queue = create_job_task_queue(
@@ -272,6 +296,7 @@ async def create_generation_variant(
     repository: JobRepository = Depends(get_job_repository),
     orchestrator: VideoGenerationOrchestrator = Depends(get_orchestrator),
     user: UserContext = Depends(get_current_user),
+    quota_service: QuotaService = Depends(get_quota_service),
 ) -> JobResponse:
     """Create a new generation job with the same parameters but a different seed."""
     source = await repository.get(job_id)
@@ -283,6 +308,15 @@ async def create_generation_variant(
         current_seed = source.generation_parameters.seed
     next_seed = 1 if current_seed is None else current_seed + 1
     preferences = source.request.preferences.model_copy(update={"seed": next_seed})
+    try:
+        await quota_service.validate_create(
+            user_id=user.user_id,
+            width=preferences.width,
+            height=preferences.height,
+            num_frames=preferences.num_frames,
+        )
+    except QuotaExceededError as exc:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, str(exc)) from exc
     request = source.request.model_copy(update={"preferences": preferences})
 
     new_job = VideoGenerationJob(request=request)
