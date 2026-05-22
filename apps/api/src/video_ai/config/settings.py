@@ -9,6 +9,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 AiProvider = Literal["mock", "vllm"]
 AgentPlannerProvider = Literal["simple", "deepagents"]
 VideoGeneratorBackend = Literal["mock", "ltx-video", "wan-i2v"]
+JobRepositoryBackend = Literal["memory", "sqlite"]
 
 
 class Settings(BaseSettings):
@@ -20,6 +21,8 @@ class Settings(BaseSettings):
     api_host: str = "0.0.0.0"
     api_port: int = 8000
     storage_root: Path = Field(default=Path(".data/storage"))
+    job_repository_backend: JobRepositoryBackend = "memory"
+    sqlite_database_path: Path = Field(default=Path(".data/video_ai.sqlite3"))
     max_upload_bytes: int = 10 * 1024 * 1024
 
     # Planning/orchestration adapters. `simple` is deterministic and GPU-free.

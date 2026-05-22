@@ -22,10 +22,10 @@ from video_ai.application.jobs import JobApplicationService
 from video_ai.application.orchestrator import VideoGenerationOrchestrator
 from video_ai.config.settings import get_settings
 from video_ai.domain.enums import JobStatus
+from video_ai.domain.ports import JobRepository
 from video_ai.infrastructure.image_validation import ImageValidationError, ImageValidationService
 from video_ai.interfaces.dependencies import get_job_repository, get_job_service, get_orchestrator
 from video_ai.interfaces.schemas import JobResponse
-from video_ai.storage.memory import InMemoryJobRepository
 
 router = APIRouter(prefix="/api", tags=["generations"])
 
@@ -71,7 +71,7 @@ async def create_generation(
 @router.get("/generations/{job_id}", response_model=JobResponse)
 async def get_generation(
     job_id: UUID,
-    repository: InMemoryJobRepository = Depends(get_job_repository),
+    repository: JobRepository = Depends(get_job_repository),
 ) -> JobResponse:
     """Return a generation job."""
     job = await repository.get(job_id)
@@ -83,7 +83,7 @@ async def get_generation(
 @router.get("/generations/{job_id}/events")
 async def stream_generation_events(
     job_id: UUID,
-    repository: InMemoryJobRepository = Depends(get_job_repository),
+    repository: JobRepository = Depends(get_job_repository),
 ) -> StreamingResponse:
     """Stream job status events as Server-Sent Events."""
 
@@ -107,7 +107,7 @@ async def stream_generation_events(
 @router.get("/generations/{job_id}/video")
 async def get_generation_video(
     job_id: UUID,
-    repository: InMemoryJobRepository = Depends(get_job_repository),
+    repository: JobRepository = Depends(get_job_repository),
 ) -> FileResponse:
     """Download a generated video artifact."""
     job = await repository.get(job_id)
