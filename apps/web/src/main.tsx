@@ -54,6 +54,7 @@ type SystemCapabilities = {
   agent_planner_provider: string;
   ai_provider: string;
   default_video_backend: string;
+  task_queue_backend: string;
   available_video_backends: string[];
   planned_video_backends: string[];
   text_model: string;
@@ -263,7 +264,7 @@ function App() {
           </div>
           {capabilities && (
             <p className="capabilities-line">
-              Planner: {capabilities.agent_planner_provider} · AI: {capabilities.ai_provider} · VLM: {capabilities.vision_model}
+              Planner: {capabilities.agent_planner_provider} · AI: {capabilities.ai_provider} · Queue: {capabilities.task_queue_backend} · VLM: {capabilities.vision_model}
             </p>
           )}
           {health && (
