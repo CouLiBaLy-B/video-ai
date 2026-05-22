@@ -57,3 +57,7 @@ asyncio_mode = "auto"
 
 [tool.ruff.lint.per-file-ignores]
 "apps/api/tests/**/*.py" = ["S101"]
+
+[[tool.mypy.overrides]]
+module = ["torch", "diffusers", "diffusers.*"]
+ignore_missing_imports = true

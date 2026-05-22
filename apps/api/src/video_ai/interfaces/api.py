@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import AsyncIterator
 from uuid import UUID
 
 from fastapi import (
@@ -76,7 +77,7 @@ async def stream_generation_events(
 ) -> StreamingResponse:
     """Stream job status events as Server-Sent Events."""
 
-    async def event_stream() -> object:
+    async def event_stream() -> AsyncIterator[str]:
         previous_status: JobStatus | None = None
         for _ in range(120):
             job = await repository.get(job_id)
