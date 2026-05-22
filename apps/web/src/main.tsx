@@ -110,6 +110,7 @@ function App() {
   const [job, setJob] = useState<JobResponse | null>(null);
   const [history, setHistory] = useState<JobResponse[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [apiKey, setApiKey] = useState(() => localStorage.getItem('video-ai-api-key') ?? '');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [capabilities, setCapabilities] = useState<SystemCapabilities | null>(null);
   const [health, setHealth] = useState<SystemHealth | null>(null);
@@ -145,6 +146,16 @@ function App() {
 
   const timeline = useMemo<TimelineItem[]>(() => buildTimeline(job?.status), [job?.status]);
 
+  function authHeaders(): HeadersInit {
+    return apiKey.trim() ? { 'X-API-Key': apiKey.trim() } : {};
+  }
+
+  function updateApiKey(value: string) {
+    setApiKey(value);
+    if (value.trim()) localStorage.setItem('video-ai-api-key', value.trim());
+    else localStorage.removeItem('video-ai-api-key');
+  }
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
@@ -165,7 +176,7 @@ function App() {
       form.append('guidance_scale', String(guidanceScale));
       form.append('inference_steps', String(inferenceSteps));
       if (seed.trim()) form.append('seed', seed.trim());
-      const response = await fetch('/api/generations', { method: 'POST', body: form });
+      const response = await fetch('/api/generations', { method: 'POST', body: form, headers: authHeaders() });
       if (!response.ok) {
         throw new Error(await response.text());
       }
@@ -181,14 +192,14 @@ function App() {
   }
 
   async function loadHistory() {
-    const response = await fetch('/api/generations');
+    const response = await fetch('/api/generations', { headers: authHeaders() });
     if (!response.ok) return;
     setHistory((await response.json()) as JobResponse[]);
   }
 
   async function pollJob(jobId: string) {
     for (let index = 0; index < 120; index += 1) {
-      const response = await fetch(`/api/generations/${jobId}`);
+      const response = await fetch(`/api/generations/${jobId}`, { headers: authHeaders() });
       if (!response.ok) return;
       const nextJob = (await response.json()) as JobResponse;
       setJob(nextJob);
@@ -204,7 +215,7 @@ function App() {
     setError(null);
     setIsSubmitting(true);
     try {
-      const response = await fetch(`/api/generations/${job.id}/rerun`, { method: 'POST' });
+      const response = await fetch(`/api/generations/${job.id}/rerun`, { method: 'POST', headers: authHeaders() });
       if (!response.ok) throw new Error(await response.text());
       const created = (await response.json()) as JobResponse;
       setJob(created);
@@ -222,7 +233,7 @@ function App() {
     setError(null);
     setIsSubmitting(true);
     try {
-      const response = await fetch(`/api/generations/${job.id}/variant`, { method: 'POST' });
+      const response = await fetch(`/api/generations/${job.id}/variant`, { method: 'POST', headers: authHeaders() });
       if (!response.ok) throw new Error(await response.text());
       const created = (await response.json()) as JobResponse;
       setJob(created);
@@ -240,7 +251,7 @@ function App() {
     setError(null);
     setIsSubmitting(true);
     try {
-      const response = await fetch(`/api/generations/${job.id}/approve`, { method: 'POST' });
+      const response = await fetch(`/api/generations/${job.id}/approve`, { method: 'POST', headers: authHeaders() });
       if (!response.ok) throw new Error(await response.text());
       const approved = (await response.json()) as JobResponse;
       setJob(approved);
@@ -256,7 +267,7 @@ function App() {
     if (!job) return;
     setError(null);
     try {
-      const response = await fetch(`/api/generations/${job.id}/reject`, { method: 'POST' });
+      const response = await fetch(`/api/generations/${job.id}/reject`, { method: 'POST', headers: authHeaders() });
       if (!response.ok) throw new Error(await response.text());
       setJob((await response.json()) as JobResponse);
     } catch (caught) {
@@ -269,7 +280,7 @@ function App() {
     if (!job) return;
     setError(null);
     try {
-      const response = await fetch(`/api/generations/${job.id}/cancel`, { method: 'POST' });
+      const response = await fetch(`/api/generations/${job.id}/cancel`, { method: 'POST', headers: authHeaders() });
       if (!response.ok) throw new Error(await response.text());
       setJob((await response.json()) as JobResponse);
     } catch (caught) {
@@ -283,6 +294,15 @@ function App() {
         <div className="brand-mark">VA</div>
         <h1>Video AI</h1>
         <p>Interface agentique text + image → vidéo avec DeepAgents, vLLM et modèles open source.</p>
+        <label className="api-key-box">
+          API key
+          <input
+            type="password"
+            value={apiKey}
+            placeholder="dev-token"
+            onChange={(event) => updateApiKey(event.target.value)}
+          />
+        </label>
         <div className="history-panel">
           <h2>Historique</h2>
           {history.length === 0 && <p>Aucune génération.</p>}

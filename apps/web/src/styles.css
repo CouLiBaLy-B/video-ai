@@ -224,3 +224,18 @@ button.secondary {
 .parameters-card h3 { margin: 0 0 10px; color: #ffe0a8; }
 .parameters-card p { color: #c7bfb4; margin: 6px 0; }
 .parameters-card div { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+
+.api-key-box {
+  display: grid;
+  gap: 8px;
+  margin-top: 24px;
+  color: #c7bfb4;
+  font-size: 0.88rem;
+}
+.api-key-box input {
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 12px;
+  padding: 10px 11px;
+  color: #fff;
+  background: rgba(255,255,255,0.06);
+}
