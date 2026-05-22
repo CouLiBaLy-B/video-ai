@@ -12,7 +12,7 @@ async def test_health_endpoint() -> None:
     assert response.json() == {"status": "ok"}
 
 
-async def test_create_and_get_generation_job() -> None:
+async def test_create_get_and_download_generation_job() -> None:
     app = create_app()
     files = {"image": ("input.png", b"fake-png-bytes", "image/png")}
     data = {"prompt": "Make this image cinematic"}
@@ -21,11 +21,17 @@ async def test_create_and_get_generation_job() -> None:
         create_response = await client.post("/api/generations", data=data, files=files)
         assert create_response.status_code == 202
         payload = create_response.json()
-        assert payload["status"] == "queued"
 
         get_response = await client.get(f"/api/generations/{payload['id']}")
         assert get_response.status_code == 200
-        assert get_response.json()["id"] == payload["id"]
+        fetched = get_response.json()
+        assert fetched["id"] == payload["id"]
+        assert fetched["status"] == "completed"
+        assert fetched["video_url"] is not None
+
+        video_response = await client.get(f"/api/generations/{payload['id']}/video")
+        assert video_response.status_code == 200
+        assert video_response.content.startswith(b"MOCK_MP4")
 
 
 async def test_create_generation_rejects_unsupported_image() -> None:
