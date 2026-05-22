@@ -25,6 +25,17 @@ async def test_system_capabilities_endpoint() -> None:
     assert "ltx-video" in payload["available_video_backends"]
 
 
+async def test_system_metrics_endpoint() -> None:
+    app = create_app()
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.get("/api/system/metrics")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert "total" in payload
+    assert "completed" in payload
+
+
 async def test_system_health_endpoint() -> None:
     app = create_app()
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:

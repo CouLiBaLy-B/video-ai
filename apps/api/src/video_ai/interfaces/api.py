@@ -19,6 +19,7 @@ from fastapi import (
 from fastapi.responses import FileResponse, StreamingResponse
 
 from video_ai.application.jobs import JobApplicationService
+from video_ai.application.metrics import MetricsService
 from video_ai.application.orchestrator import VideoGenerationOrchestrator
 from video_ai.config.settings import get_settings
 from video_ai.domain.enums import JobStatus, VideoBackend
@@ -34,6 +35,7 @@ from video_ai.interfaces.dependencies import (
 )
 from video_ai.interfaces.schemas import (
     ComponentHealthResponse,
+    JobMetricsResponse,
     JobResponse,
     LtxValidationRequest,
     LtxValidationResponse,
@@ -96,6 +98,27 @@ async def get_system_health(
         job_repository=repository_status,
         vllm_text=ComponentHealthResponse(status="ok" if text_ok else "unavailable"),
         vllm_vision=ComponentHealthResponse(status="ok" if vision_ok else "unavailable"),
+    )
+
+
+@router.get("/system/metrics", response_model=JobMetricsResponse)
+async def get_system_metrics(
+    repository: JobRepository = Depends(get_job_repository),
+) -> JobMetricsResponse:
+    """Return aggregated job metrics."""
+    metrics = await MetricsService(repository).collect_job_metrics()
+    return JobMetricsResponse(
+        total=metrics.total,
+        by_status={status.value: count for status, count in metrics.by_status.items()},
+        queued=metrics.queued,
+        planning=metrics.planning,
+        analyzing=metrics.analyzing,
+        waiting_for_approval=metrics.waiting_for_approval,
+        generating=metrics.generating,
+        reviewing=metrics.reviewing,
+        completed=metrics.completed,
+        failed=metrics.failed,
+        cancelled=metrics.cancelled,
     )
 
 

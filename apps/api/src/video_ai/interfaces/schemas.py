@@ -124,6 +124,22 @@ class LtxValidationResponse(BaseModel):
     recommended: dict[str, int | float | str]
 
 
+class JobMetricsResponse(BaseModel):
+    """Public job metrics response."""
+
+    total: int
+    by_status: dict[str, int]
+    queued: int
+    planning: int
+    analyzing: int
+    waiting_for_approval: int
+    generating: int
+    reviewing: int
+    completed: int
+    failed: int
+    cancelled: int
+
+
 class ErrorResponse(BaseModel):
     """Error payload."""
 
