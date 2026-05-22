@@ -58,11 +58,15 @@ class VideoGenerationOrchestrator:
 
     async def run_approved(self, job: VideoGenerationJob) -> VideoGenerationJob:
         """Continue a prepared job after human approval."""
-        if job.pending_parameters is None:
+        latest = await self._repository.get(job.id)
+        job_to_run = latest or job
+        if job_to_run.status == JobStatus.CANCELLED:
+            return job_to_run
+        if job_to_run.pending_parameters is None:
             raise RuntimeError("Cannot approve a job without pending generation parameters")
-        parameters = job.pending_parameters
+        parameters = job_to_run.pending_parameters
         current = await self._transition(
-            job, JobStatus.GENERATING, f"Generating with {parameters.model.id}"
+            job_to_run, JobStatus.GENERATING, f"Generating with {parameters.model.id}"
         )
         video = await self._video_generator.generate(parameters)
 
