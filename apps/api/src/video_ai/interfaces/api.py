@@ -21,13 +21,28 @@ from fastapi.responses import FileResponse, StreamingResponse
 from video_ai.application.jobs import JobApplicationService
 from video_ai.application.orchestrator import VideoGenerationOrchestrator
 from video_ai.config.settings import get_settings
-from video_ai.domain.enums import JobStatus
+from video_ai.domain.enums import JobStatus, VideoBackend
 from video_ai.domain.ports import JobRepository
 from video_ai.infrastructure.image_validation import ImageValidationError, ImageValidationService
 from video_ai.interfaces.dependencies import get_job_repository, get_job_service, get_orchestrator
-from video_ai.interfaces.schemas import JobResponse
+from video_ai.interfaces.schemas import JobResponse, SystemCapabilitiesResponse
 
 router = APIRouter(prefix="/api", tags=["generations"])
+
+
+@router.get("/system/capabilities", response_model=SystemCapabilitiesResponse)
+async def get_system_capabilities() -> SystemCapabilitiesResponse:
+    """Return configured AI and video backend capabilities."""
+    settings = get_settings()
+    return SystemCapabilitiesResponse(
+        agent_planner_provider=settings.agent_planner_provider,
+        ai_provider=settings.ai_provider,
+        default_video_backend=settings.video_generator_backend,
+        available_video_backends=[VideoBackend.MOCK.value, VideoBackend.LTX_VIDEO.value],
+        planned_video_backends=[VideoBackend.WAN_I2V.value],
+        text_model=settings.vllm_text_model,
+        vision_model=settings.vllm_vision_model,
+    )
 
 
 @router.post(
@@ -39,6 +54,14 @@ async def create_generation(
     background_tasks: BackgroundTasks,
     prompt: str = Form(..., min_length=3),
     image: UploadFile = File(...),
+    requested_backend: VideoBackend | None = Form(default=None),
+    width: int | None = Form(default=None),
+    height: int | None = Form(default=None),
+    num_frames: int | None = Form(default=None),
+    fps: int | None = Form(default=None),
+    seed: int | None = Form(default=None),
+    guidance_scale: float | None = Form(default=None),
+    inference_steps: int | None = Form(default=None),
     service: JobApplicationService = Depends(get_job_service),
     orchestrator: VideoGenerationOrchestrator = Depends(get_orchestrator),
 ) -> JobResponse:
@@ -63,6 +86,14 @@ async def create_generation(
         image_mime_type=sanitized.mime_type,
         image_width=sanitized.width,
         image_height=sanitized.height,
+        requested_backend=requested_backend,
+        width=width,
+        height=height,
+        num_frames=num_frames,
+        fps=fps,
+        seed=seed,
+        guidance_scale=guidance_scale,
+        inference_steps=inference_steps,
     )
     background_tasks.add_task(_run_orchestrator_safely, orchestrator, job.id)
     return JobResponse.from_job(job)

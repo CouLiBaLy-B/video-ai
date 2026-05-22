@@ -4,7 +4,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from video_ai.domain.models import GenerationRequest, ImageAsset, VideoGenerationJob
+from video_ai.domain.enums import VideoBackend
+from video_ai.domain.models import (
+    GenerationPreferences,
+    GenerationRequest,
+    ImageAsset,
+    VideoGenerationJob,
+)
 from video_ai.domain.ports import JobRepository, StorageService
 
 
@@ -24,6 +30,14 @@ class JobApplicationService:
         image_mime_type: str,
         image_width: int | None = None,
         image_height: int | None = None,
+        requested_backend: VideoBackend | None = None,
+        width: int | None = None,
+        height: int | None = None,
+        num_frames: int | None = None,
+        fps: int | None = None,
+        seed: int | None = None,
+        guidance_scale: float | None = None,
+        inference_steps: int | None = None,
         user_id: str | None = None,
     ) -> VideoGenerationJob:
         """Create a queued generation job from user input."""
@@ -39,7 +53,19 @@ class JobApplicationService:
             width=image_width,
             height=image_height,
         )
-        request = GenerationRequest(prompt=prompt, image=image, user_id=user_id)
+        preferences = GenerationPreferences(
+            requested_backend=requested_backend,
+            width=width,
+            height=height,
+            num_frames=num_frames,
+            fps=fps,
+            seed=seed,
+            guidance_scale=guidance_scale,
+            inference_steps=inference_steps,
+        )
+        request = GenerationRequest(
+            prompt=prompt, image=image, preferences=preferences, user_id=user_id
+        )
         job = VideoGenerationJob(request=request)
         await self._repository.save(job)
         return job

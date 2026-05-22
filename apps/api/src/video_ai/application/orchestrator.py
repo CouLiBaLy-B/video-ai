@@ -58,13 +58,18 @@ class VideoGenerationOrchestrator:
         )
         prompt = await self._prompt_enhancer.enhance(current.request.prompt, analysis)
         model = await self._model_router.select_model(current.request)
+        preferences = current.request.preferences
         parameters = GenerationParameters(
             prompt=prompt,
             image=current.request.image,
             model=model,
-            width=model.default_width,
-            height=model.default_height,
-            fps=model.default_fps,
+            width=preferences.width or model.default_width,
+            height=preferences.height or model.default_height,
+            num_frames=preferences.num_frames or 121,
+            fps=preferences.fps or model.default_fps,
+            seed=preferences.seed,
+            guidance_scale=preferences.guidance_scale or 3.5,
+            inference_steps=preferences.inference_steps or 30,
         )
 
         current = await self._transition(

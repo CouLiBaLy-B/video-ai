@@ -73,6 +73,18 @@ class JobResponse(BaseModel):
         )
 
 
+class SystemCapabilitiesResponse(BaseModel):
+    """Runtime capabilities exposed to the frontend."""
+
+    agent_planner_provider: str
+    ai_provider: str
+    default_video_backend: str
+    available_video_backends: list[str]
+    planned_video_backends: list[str]
+    text_model: str
+    vision_model: str
+
+
 class ErrorResponse(BaseModel):
     """Error payload."""
 

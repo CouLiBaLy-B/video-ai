@@ -39,12 +39,26 @@ class ImageAsset(DomainModel):
         return value
 
 
+class GenerationPreferences(DomainModel):
+    """User-controllable generation preferences."""
+
+    requested_backend: VideoBackend | None = None
+    width: int | None = Field(default=None, ge=64, le=4096)
+    height: int | None = Field(default=None, ge=64, le=4096)
+    num_frames: int | None = Field(default=None, ge=1, le=1_000)
+    fps: int | None = Field(default=None, ge=1, le=120)
+    seed: int | None = Field(default=None, ge=0)
+    guidance_scale: float | None = Field(default=None, ge=0.0, le=30.0)
+    inference_steps: int | None = Field(default=None, ge=1, le=200)
+
+
 class GenerationRequest(DomainModel):
     """User request for text+image to video generation."""
 
     id: UUID = Field(default_factory=uuid4)
     prompt: str = Field(min_length=3, max_length=8_000)
     image: ImageAsset
+    preferences: GenerationPreferences = Field(default_factory=GenerationPreferences)
     user_id: str | None = Field(default=None, max_length=128)
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 

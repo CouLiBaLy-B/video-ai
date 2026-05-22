@@ -15,9 +15,11 @@ from video_ai.domain.ports import (
     VisionAnalyzer,
     WorkflowPlanner,
 )
+from video_ai.infrastructure.composite_video import CompositeVideoGenerator
 from video_ai.infrastructure.ltx_video import LTX_VIDEO_2B_DISTILLED_PROFILE, LtxVideoGenerator
+from video_ai.infrastructure.routing import RequestAwareVideoModelRouter
 from video_ai.infrastructure.simple_ai import SimplePromptEnhancer, SimpleVisionAnalyzer
-from video_ai.infrastructure.video import MockVideoGenerator, StaticVideoModelRouter
+from video_ai.infrastructure.video import MockVideoGenerator
 from video_ai.infrastructure.vllm import VllmChatGateway, VllmPromptEnhancer, VllmVisionAnalyzer
 
 WAN_I2V_A14B_PROFILE = ModelProfile(
@@ -69,41 +71,43 @@ def create_prompt_enhancer(settings: Settings) -> PromptEnhancer:
 
 
 def create_model_router(settings: Settings) -> VideoModelRouter:
-    """Create a router profile aligned with the configured video backend."""
-    return StaticVideoModelRouter(default_profile=_profile_for_backend(settings))
+    """Create a request-aware router aligned with configured defaults."""
+    return RequestAwareVideoModelRouter(
+        default_backend=VideoBackend(settings.video_generator_backend),
+        profiles=_available_profiles(settings),
+    )
 
 
 def create_video_generator(settings: Settings, storage: StorageService) -> VideoGenerator:
-    """Create the configured video generator."""
-    if settings.video_generator_backend == "ltx-video":
-        return LtxVideoGenerator(
-            storage=storage,
-            model_id=settings.ltx_video_model_id,
-            torch_dtype=settings.ltx_video_torch_dtype,
-            device=settings.ltx_video_device,
-        )
-    if settings.video_generator_backend == "wan-i2v":
-        # A dedicated Wan adapter will be implemented once runtime requirements
-        # are finalized. We fail fast instead of silently using the wrong model.
-        raise NotImplementedError("Wan I2V generation adapter is not implemented yet")
-    return MockVideoGenerator(storage)
-
-
-def _profile_for_backend(settings: Settings) -> ModelProfile:
-    if settings.video_generator_backend == "ltx-video":
-        return LTX_VIDEO_2B_DISTILLED_PROFILE.model_copy(
-            update={"id": settings.ltx_video_model_id}
-        )
-    if settings.video_generator_backend == "wan-i2v":
-        return WAN_I2V_A14B_PROFILE
-    return ModelProfile(
-        id="mock-video-v1",
-        backend=VideoBackend.MOCK,
-        display_name="Mock Video Generator",
-        supports_image_to_video=True,
-        supports_text_to_video=False,
-        min_vram_gb=0,
-        default_width=512,
-        default_height=512,
-        default_fps=24,
+    """Create a composite video generator with lazy heavyweight adapters."""
+    return CompositeVideoGenerator(
+        {
+            VideoBackend.MOCK: MockVideoGenerator(storage),
+            VideoBackend.LTX_VIDEO: LtxVideoGenerator(
+                storage=storage,
+                model_id=settings.ltx_video_model_id,
+                torch_dtype=settings.ltx_video_torch_dtype,
+                device=settings.ltx_video_device,
+            ),
+        }
     )
+
+
+def _available_profiles(settings: Settings) -> dict[VideoBackend, ModelProfile]:
+    return {
+        VideoBackend.MOCK: ModelProfile(
+            id="mock-video-v1",
+            backend=VideoBackend.MOCK,
+            display_name="Mock Video Generator",
+            supports_image_to_video=True,
+            supports_text_to_video=False,
+            min_vram_gb=0,
+            default_width=512,
+            default_height=512,
+            default_fps=24,
+        ),
+        VideoBackend.LTX_VIDEO: LTX_VIDEO_2B_DISTILLED_PROFILE.model_copy(
+            update={"id": settings.ltx_video_model_id}
+        ),
+        VideoBackend.WAN_I2V: WAN_I2V_A14B_PROFILE,
+    }

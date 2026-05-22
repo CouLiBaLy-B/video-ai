@@ -13,6 +13,17 @@ async def test_health_endpoint() -> None:
     assert response.json() == {"status": "ok"}
 
 
+async def test_system_capabilities_endpoint() -> None:
+    app = create_app()
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.get("/api/system/capabilities")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert "mock" in payload["available_video_backends"]
+    assert "ltx-video" in payload["available_video_backends"]
+
+
 async def test_create_get_and_download_generation_job() -> None:
     app = create_app()
     files = {"image": ("input.png", png_bytes(), "image/png")}
@@ -48,3 +59,27 @@ async def test_create_generation_rejects_unsupported_image() -> None:
         response = await client.post("/api/generations", data=data, files=files)
 
     assert response.status_code == 415
+
+
+async def test_create_generation_accepts_generation_parameters() -> None:
+    app = create_app()
+    files = {"image": ("input.png", png_bytes(), "image/png")}
+    data = {
+        "prompt": "Make this image cinematic",
+        "requested_backend": "mock",
+        "width": "320",
+        "height": "240",
+        "num_frames": "24",
+        "fps": "12",
+        "seed": "42",
+    }
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        create_response = await client.post("/api/generations", data=data, files=files)
+        assert create_response.status_code == 202
+        payload = create_response.json()
+        video_response = await client.get(f"/api/generations/{payload['id']}/video")
+
+    assert b'"width": 320' in video_response.content
+    assert b'"height": 240' in video_response.content
+    assert b'"fps": 12' in video_response.content
