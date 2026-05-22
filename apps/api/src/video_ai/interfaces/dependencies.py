@@ -13,7 +13,7 @@ from video_ai.application.task_queue import (
     RedisRqJobTaskQueue,
 )
 from video_ai.config.settings import Settings, get_settings
-from video_ai.domain.ports import JobRepository
+from video_ai.domain.ports import JobRepository, StorageService
 from video_ai.infrastructure.factories import (
     create_model_router,
     create_prompt_enhancer,
@@ -24,6 +24,7 @@ from video_ai.infrastructure.factories import (
 from video_ai.infrastructure.video import HeuristicQualityReviewer
 from video_ai.storage.local import LocalStorageService
 from video_ai.storage.memory import InMemoryJobRepository
+from video_ai.storage.s3 import S3StorageService
 from video_ai.storage.sqlalchemy_repository import SqlAlchemyJobRepository
 from video_ai.storage.sqlite import SQLiteJobRepository
 
@@ -56,16 +57,16 @@ def get_job_repository() -> JobRepository:
     return get_memory_job_repository()
 
 
-def get_upload_storage() -> LocalStorageService:
+def get_upload_storage() -> StorageService:
     """Return storage for uploaded input assets."""
     settings: Settings = get_settings()
-    return LocalStorageService(settings.storage_root / "uploads")
+    return _create_storage_service(settings, "uploads")
 
 
-def get_output_storage() -> LocalStorageService:
+def get_output_storage() -> StorageService:
     """Return storage for generated video assets."""
     settings: Settings = get_settings()
-    return LocalStorageService(settings.storage_root / "outputs")
+    return _create_storage_service(settings, "outputs")
 
 
 def get_job_service() -> JobApplicationService:
@@ -127,3 +128,22 @@ def create_job_task_queue(
         orchestrator=orchestrator,
         repository=repository,
     )
+
+
+def _create_storage_service(settings: Settings, namespace: str) -> StorageService:
+    """Create configured storage service for a logical namespace."""
+    if settings.storage_backend == "s3":
+        return S3StorageService(
+            bucket=settings.s3_bucket,
+            endpoint_url=settings.s3_endpoint_url,
+            region_name=settings.s3_region,
+            access_key_id=settings.s3_access_key_id,
+            secret_access_key=settings.s3_secret_access_key,
+            public_base_url=(
+                f"{settings.s3_public_base_url.rstrip('/')}/{namespace}"
+                if settings.s3_public_base_url
+                else None
+            ),
+            presigned_url_expires_seconds=settings.s3_presigned_url_expires_seconds,
+        )
+    return LocalStorageService(settings.storage_root / namespace)

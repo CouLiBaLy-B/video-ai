@@ -19,6 +19,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+storage = [
+  "boto3>=1.34.0",
+]
 db = [
   "sqlalchemy>=2.0.0",
   "psycopg[binary]>=3.2.0",
@@ -72,7 +75,7 @@ asyncio_mode = "auto"
 "apps/api/tests/**/*.py" = ["S101"]
 
 [[tool.mypy.overrides]]
-module = ["torch", "diffusers", "diffusers.*", "redis", "rq"]
+module = ["torch", "diffusers", "diffusers.*", "redis", "rq", "boto3"]
 ignore_missing_imports = true
 
 [tool.setuptools.packages.find]

@@ -11,6 +11,7 @@ AgentPlannerProvider = Literal["simple", "deepagents"]
 VideoGeneratorBackend = Literal["mock", "ltx-video", "wan-i2v"]
 JobRepositoryBackend = Literal["memory", "sqlite", "postgres"]
 TaskQueueBackend = Literal["fastapi", "redis-rq"]
+StorageBackend = Literal["local", "s3"]
 
 
 class Settings(BaseSettings):
@@ -21,7 +22,15 @@ class Settings(BaseSettings):
     app_env: str = "development"
     api_host: str = "0.0.0.0"
     api_port: int = 8000
+    storage_backend: StorageBackend = "local"
     storage_root: Path = Field(default=Path(".data/storage"))
+    s3_bucket: str = "video-ai-assets"
+    s3_endpoint_url: str | None = None
+    s3_region: str = "us-east-1"
+    s3_access_key_id: str | None = None
+    s3_secret_access_key: str | None = None
+    s3_public_base_url: str | None = None
+    s3_presigned_url_expires_seconds: int = 3600
     job_repository_backend: JobRepositoryBackend = "memory"
     sqlite_database_path: Path = Field(default=Path(".data/video_ai.sqlite3"))
     database_url: str = "postgresql+psycopg://video_ai:video_ai_dev@localhost:5432/video_ai"
