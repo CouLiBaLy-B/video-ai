@@ -1,4 +1,4 @@
-.PHONY: install install-web dev-api dev-web test lint typecheck build-web quality clean
+.PHONY: install install-web dev-api dev-web doctor test lint typecheck build-web quality clean
 
 install:
 	python -m pip install -e '.[dev]'
@@ -12,6 +12,9 @@ dev-api:
 dev-web:
 	cd apps/web && npm run dev
 
+doctor:
+	python scripts/doctor.py
+
 test:
 	python -m pytest apps/api/tests
 
@@ -24,7 +27,7 @@ typecheck:
 build-web:
 	cd apps/web && npm run build
 
-quality: lint typecheck test build-web
+quality: doctor lint typecheck test build-web
 
 clean:
 	rm -rf .pytest_cache .mypy_cache .ruff_cache apps/web/dist apps/web/tsconfig.tsbuildinfo
