@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from video_ai.agents.deepagents_factory import DeepAgentConfig
 from video_ai.agents.planners import DeepAgentsWorkflowPlanner, SimpleWorkflowPlanner
+from video_ai.agents.tools import VideoAgentToolbelt
 from video_ai.config.settings import Settings
 from video_ai.domain.enums import VideoBackend
 from video_ai.domain.models import ModelProfile
@@ -39,8 +40,14 @@ WAN_I2V_A14B_PROFILE = ModelProfile(
 def create_workflow_planner(settings: Settings) -> WorkflowPlanner:
     """Create the configured agentic workflow planner."""
     if settings.agent_planner_provider == "deepagents":
+        toolbelt = VideoAgentToolbelt(
+            vision_analyzer=create_vision_analyzer(settings),
+            prompt_enhancer=create_prompt_enhancer(settings),
+            model_router=create_model_router(settings),
+        )
         return DeepAgentsWorkflowPlanner(
-            DeepAgentConfig(model=settings.deepagents_model, skills_path="skills")
+            DeepAgentConfig(model=settings.deepagents_model, skills_path="skills"),
+            toolbelt=toolbelt,
         )
     return SimpleWorkflowPlanner()
 

@@ -10,6 +10,7 @@ from video_ai.agents.deepagents_factory import (
     DeepAgentsUnavailableError,
     create_video_deep_agent,
 )
+from video_ai.agents.tools import VideoAgentToolbelt, build_deepagents_tools
 from video_ai.domain.models import AgentPlan, AgentPlanStep, VideoGenerationJob
 
 
@@ -64,14 +65,18 @@ class DeepAgentsWorkflowPlanner:
     application service and ports, preserving SOLID boundaries and testability.
     """
 
-    def __init__(self, config: DeepAgentConfig) -> None:
+    def __init__(self, config: DeepAgentConfig, toolbelt: VideoAgentToolbelt | None = None) -> None:
         self._config = config
+        self._toolbelt = toolbelt
 
     async def plan(self, job: VideoGenerationJob) -> AgentPlan:
         """Ask DeepAgents to produce a structured workflow plan."""
-        agent = create_video_deep_agent(self._config, tools=[])
+        tools = build_deepagents_tools(self._toolbelt, job) if self._toolbelt else []
+        agent = create_video_deep_agent(self._config, tools=tools)
         prompt = (
             "Create a JSON plan for this text+image to video request. "
+            "Use available tools when useful to inspect image context, route model, "
+            "and validate parameters. "
             "Return keys: summary, requires_human_approval, steps. "
             "Each step has name, description, agent.\n"
             f"Prompt: {job.request.prompt}\n"
