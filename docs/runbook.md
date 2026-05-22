@@ -402,3 +402,32 @@ When auth is enabled:
 
 The React UI includes an API key field in the sidebar and stores it in browser localStorage.
 For public production, replace this simple API-key auth with a full identity provider/JWT flow.
+
+## User quotas and generation limits
+
+Per-user quotas and generation bounds can be configured with:
+
+```env
+MAX_ACTIVE_JOBS_PER_USER=2
+MAX_DAILY_JOBS_PER_USER=20
+MAX_GENERATION_WIDTH=1280
+MAX_GENERATION_HEIGHT=768
+MAX_GENERATION_FRAMES=121
+```
+
+The API validates quotas before job creation, rerun, and seed variant creation.
+When a quota is exceeded, the API returns:
+
+```http
+403 Forbidden
+```
+
+Examples of rejected requests:
+
+- too many active jobs for a user;
+- too many jobs in the last 24 hours;
+- width above `MAX_GENERATION_WIDTH`;
+- height above `MAX_GENERATION_HEIGHT`;
+- frames above `MAX_GENERATION_FRAMES`.
+
+Anonymous/mock local mode still enforces generation parameter bounds, while per-user quotas require a `user_id` from authentication.
