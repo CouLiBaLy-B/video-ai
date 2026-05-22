@@ -28,6 +28,7 @@ from video_ai.domain.ports import JobRepository
 from video_ai.infrastructure.image_validation import ImageValidationError, ImageValidationService
 from video_ai.infrastructure.ltx_video import LtxVideoParameterValidator
 from video_ai.infrastructure.vllm import VllmHealthChecker
+from video_ai.interfaces.auth import UserContext, ensure_job_access, get_current_user
 from video_ai.interfaces.dependencies import (
     create_job_task_queue,
     get_job_repository,
@@ -160,6 +161,7 @@ async def create_generation(
     seed: int | None = Form(default=None),
     guidance_scale: float | None = Form(default=None),
     inference_steps: int | None = Form(default=None),
+    user: UserContext = Depends(get_current_user),
     service: JobApplicationService = Depends(get_job_service),
     orchestrator: VideoGenerationOrchestrator = Depends(get_orchestrator),
 ) -> JobResponse:
@@ -194,6 +196,7 @@ async def create_generation(
         seed=seed,
         guidance_scale=guidance_scale,
         inference_steps=inference_steps,
+        user_id=user.user_id,
     )
     queue = create_job_task_queue(
         background_tasks=background_tasks,
@@ -207,9 +210,12 @@ async def create_generation(
 @router.get("/generations", response_model=list[JobResponse])
 async def list_generations(
     repository: JobRepository = Depends(get_job_repository),
+    user: UserContext = Depends(get_current_user),
 ) -> list[JobResponse]:
-    """Return all known generation jobs."""
+    """Return all known generation jobs visible to the current user."""
     jobs = await repository.list_all()
+    if user.auth_enabled:
+        jobs = [job for job in jobs if job.request.user_id == user.user_id]
     return [JobResponse.from_job(job) for job in jobs]
 
 
@@ -217,11 +223,13 @@ async def list_generations(
 async def get_generation(
     job_id: UUID,
     repository: JobRepository = Depends(get_job_repository),
+    user: UserContext = Depends(get_current_user),
 ) -> JobResponse:
     """Return a generation job."""
     job = await repository.get(job_id)
     if job is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Generation job not found")
+    ensure_job_access(job, user)
     return JobResponse.from_job(job)
 
 
@@ -235,11 +243,13 @@ async def rerun_generation(
     background_tasks: BackgroundTasks,
     repository: JobRepository = Depends(get_job_repository),
     orchestrator: VideoGenerationOrchestrator = Depends(get_orchestrator),
+    user: UserContext = Depends(get_current_user),
 ) -> JobResponse:
     """Create a new generation job using the same request and preferences."""
     source = await repository.get(job_id)
     if source is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Generation job not found")
+    ensure_job_access(source, user)
     new_job = VideoGenerationJob(request=source.request)
     await repository.save(new_job)
     queue = create_job_task_queue(
@@ -261,11 +271,13 @@ async def create_generation_variant(
     background_tasks: BackgroundTasks,
     repository: JobRepository = Depends(get_job_repository),
     orchestrator: VideoGenerationOrchestrator = Depends(get_orchestrator),
+    user: UserContext = Depends(get_current_user),
 ) -> JobResponse:
     """Create a new generation job with the same parameters but a different seed."""
     source = await repository.get(job_id)
     if source is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Generation job not found")
+    ensure_job_access(source, user)
     current_seed = source.request.preferences.seed
     if current_seed is None and source.generation_parameters is not None:
         current_seed = source.generation_parameters.seed
@@ -290,11 +302,13 @@ async def approve_generation(
     background_tasks: BackgroundTasks,
     repository: JobRepository = Depends(get_job_repository),
     orchestrator: VideoGenerationOrchestrator = Depends(get_orchestrator),
+    user: UserContext = Depends(get_current_user),
 ) -> JobResponse:
     """Approve a generation waiting for human confirmation."""
     job = await repository.get(job_id)
     if job is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Generation job not found")
+    ensure_job_access(job, user)
     if job.status != JobStatus.WAITING_FOR_APPROVAL:
         raise HTTPException(status.HTTP_409_CONFLICT, "Generation is not waiting for approval")
     approved = job.transition(JobStatus.QUEUED, "Human approved GPU generation")
@@ -313,11 +327,13 @@ async def reject_generation(
     job_id: UUID,
     repository: JobRepository = Depends(get_job_repository),
     orchestrator: VideoGenerationOrchestrator = Depends(get_orchestrator),
+    user: UserContext = Depends(get_current_user),
 ) -> JobResponse:
     """Reject and cancel a generation waiting for human confirmation."""
     job = await repository.get(job_id)
     if job is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Generation job not found")
+    ensure_job_access(job, user)
     if job.status != JobStatus.WAITING_FOR_APPROVAL:
         raise HTTPException(status.HTTP_409_CONFLICT, "Generation is not waiting for approval")
     rejected = await orchestrator.reject(job)
@@ -328,11 +344,13 @@ async def reject_generation(
 async def cancel_generation(
     job_id: UUID,
     repository: JobRepository = Depends(get_job_repository),
+    user: UserContext = Depends(get_current_user),
 ) -> JobResponse:
     """Cancel a queued or approval-waiting generation job."""
     job = await repository.get(job_id)
     if job is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Generation job not found")
+    ensure_job_access(job, user)
     if job.status in {JobStatus.COMPLETED, JobStatus.FAILED, JobStatus.CANCELLED}:
         raise HTTPException(status.HTTP_409_CONFLICT, "Generation cannot be cancelled")
     cancelled = job.model_copy(update={"pending_parameters": None}).transition(
@@ -370,11 +388,13 @@ async def stream_generation_events(
 async def get_generation_video(
     job_id: UUID,
     repository: JobRepository = Depends(get_job_repository),
+    user: UserContext = Depends(get_current_user),
 ) -> Response:
     """Download a generated video artifact."""
     job = await repository.get(job_id)
     if job is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Generation job not found")
+    ensure_job_access(job, user)
     if job.video is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Generated video not available")
     if job.video.storage.path is not None:
