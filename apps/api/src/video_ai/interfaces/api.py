@@ -24,8 +24,14 @@ from video_ai.config.settings import get_settings
 from video_ai.domain.enums import JobStatus, VideoBackend
 from video_ai.domain.ports import JobRepository
 from video_ai.infrastructure.image_validation import ImageValidationError, ImageValidationService
+from video_ai.infrastructure.vllm import VllmHealthChecker
 from video_ai.interfaces.dependencies import get_job_repository, get_job_service, get_orchestrator
-from video_ai.interfaces.schemas import JobResponse, SystemCapabilitiesResponse
+from video_ai.interfaces.schemas import (
+    ComponentHealthResponse,
+    JobResponse,
+    SystemCapabilitiesResponse,
+    SystemHealthResponse,
+)
 
 router = APIRouter(prefix="/api", tags=["generations"])
 
@@ -42,6 +48,44 @@ async def get_system_capabilities() -> SystemCapabilitiesResponse:
         planned_video_backends=[VideoBackend.WAN_I2V.value],
         text_model=settings.vllm_text_model,
         vision_model=settings.vllm_vision_model,
+    )
+
+
+@router.get("/system/health", response_model=SystemHealthResponse)
+async def get_system_health(
+    repository: JobRepository = Depends(get_job_repository),
+) -> SystemHealthResponse:
+    """Return health for API, storage, repository and configured vLLM endpoints."""
+    settings = get_settings()
+    storage_status = ComponentHealthResponse(status="ok")
+    try:
+        settings.storage_root.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        storage_status = ComponentHealthResponse(status="unavailable", detail=str(exc))
+
+    repository_status = ComponentHealthResponse(status="ok")
+    try:
+        await repository.list_all()
+    except Exception as exc:  # pragma: no cover - defensive health endpoint
+        repository_status = ComponentHealthResponse(status="unavailable", detail=str(exc))
+
+    text_ok = await VllmHealthChecker(
+        base_url=settings.vllm_text_base_url,
+        api_key=settings.vllm_api_key,
+        timeout_seconds=5.0,
+    ).check()
+    vision_ok = await VllmHealthChecker(
+        base_url=settings.vllm_vision_base_url,
+        api_key=settings.vllm_api_key,
+        timeout_seconds=5.0,
+    ).check()
+
+    return SystemHealthResponse(
+        api=ComponentHealthResponse(status="ok"),
+        storage=storage_status,
+        job_repository=repository_status,
+        vllm_text=ComponentHealthResponse(status="ok" if text_ok else "unavailable"),
+        vllm_vision=ComponentHealthResponse(status="ok" if vision_ok else "unavailable"),
     )
 
 

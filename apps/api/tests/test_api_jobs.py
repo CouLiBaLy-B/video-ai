@@ -24,6 +24,19 @@ async def test_system_capabilities_endpoint() -> None:
     assert "ltx-video" in payload["available_video_backends"]
 
 
+async def test_system_health_endpoint() -> None:
+    app = create_app()
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.get("/api/system/health")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["api"]["status"] == "ok"
+    assert payload["storage"]["status"] == "ok"
+    assert payload["job_repository"]["status"] == "ok"
+    assert payload["vllm_text"]["status"] in {"ok", "unavailable"}
+
+
 async def test_create_get_and_download_generation_job() -> None:
     app = create_app()
     files = {"image": ("input.png", png_bytes(), "image/png")}

@@ -205,3 +205,47 @@ def _str_list(value: object) -> list[str]:
     if not isinstance(value, list):
         return []
     return [str(item) for item in value]
+
+
+class VllmHealthChecker:
+    """Health checker for OpenAI-compatible vLLM endpoints."""
+
+    def __init__(
+        self,
+        *,
+        base_url: str,
+        api_key: str,
+        timeout_seconds: float = 5.0,
+        client: httpx.AsyncClient | None = None,
+    ) -> None:
+        self._base_url = base_url.rstrip("/")
+        self._api_key = api_key
+        self._timeout_seconds = timeout_seconds
+        self._client = client
+        self._owns_client = client is None
+
+    async def __aenter__(self) -> VllmHealthChecker:
+        return self
+
+    async def __aexit__(self, *_exc: object) -> None:
+        await self.aclose()
+
+    async def aclose(self) -> None:
+        """Close the underlying HTTP client if owned by the checker."""
+        if self._client is not None and self._owns_client:
+            await self._client.aclose()
+
+    async def check(self) -> bool:
+        """Return True when the vLLM endpoint responds to `/models`."""
+        client = self._client or httpx.AsyncClient(timeout=self._timeout_seconds)
+        try:
+            response = await client.get(
+                f"{self._base_url}/models",
+                headers={"Authorization": f"Bearer {self._api_key}"},
+            )
+            return response.status_code < 500 and response.status_code != 404
+        except httpx.HTTPError:
+            return False
+        finally:
+            if self._client is None:
+                await client.aclose()

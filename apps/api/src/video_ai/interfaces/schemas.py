@@ -85,6 +85,23 @@ class SystemCapabilitiesResponse(BaseModel):
     vision_model: str
 
 
+class ComponentHealthResponse(BaseModel):
+    """Health status for one runtime component."""
+
+    status: str
+    detail: str | None = None
+
+
+class SystemHealthResponse(BaseModel):
+    """Aggregated runtime health response."""
+
+    api: ComponentHealthResponse
+    storage: ComponentHealthResponse
+    job_repository: ComponentHealthResponse
+    vllm_text: ComponentHealthResponse
+    vllm_vision: ComponentHealthResponse
+
+
 class ErrorResponse(BaseModel):
     """Error payload."""
 
