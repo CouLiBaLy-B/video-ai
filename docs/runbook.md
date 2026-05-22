@@ -245,3 +245,36 @@ curl http://localhost:8000/api/system/metrics
 
 Metrics currently include job counts by lifecycle status. The frontend displays a compact
 summary for total, completed, failed and cancelled jobs.
+
+## Security controls
+
+The API adds baseline security headers to every response:
+
+- `X-Content-Type-Options: nosniff`
+- `X-Frame-Options: DENY`
+- `Referrer-Policy: no-referrer`
+- `Permissions-Policy: camera=(), microphone=(), geolocation=()`
+
+Rate limiting is enabled by default for non-health endpoints with an in-memory per-client sliding window:
+
+```env
+RATE_LIMIT_ENABLED=true
+RATE_LIMIT_REQUESTS=60
+RATE_LIMIT_WINDOW_SECONDS=60
+```
+
+When exceeded, the API returns:
+
+```http
+429 Too Many Requests
+Retry-After: <seconds>
+```
+
+For multi-process production deployments, prefer a shared Redis/API-gateway limiter. The in-memory limiter is intended for local, development, and single-process deployments.
+
+Image upload security is configurable:
+
+```env
+MAX_UPLOAD_BYTES=10485760
+MAX_IMAGE_PIXELS=16000000
+```
