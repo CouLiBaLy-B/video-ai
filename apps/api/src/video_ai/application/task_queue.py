@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Awaitable, Callable
-from typing import Protocol
+from collections.abc import Awaitable, Callable, Coroutine
+from typing import Any, Protocol
 from uuid import UUID
 
 from fastapi import BackgroundTasks
@@ -138,7 +138,7 @@ async def run_approved_orchestrator_job(
             await repository.save(failed)
 
 
-def run_async(coro: Awaitable[None]) -> None:
+def run_async(coro: Coroutine[Any, Any, None]) -> None:
     """Run a coroutine from a synchronous worker function."""
     asyncio.run(coro)
 

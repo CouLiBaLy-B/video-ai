@@ -63,5 +63,5 @@ asyncio_mode = "auto"
 "apps/api/tests/**/*.py" = ["S101"]
 
 [[tool.mypy.overrides]]
-module = ["torch", "diffusers", "diffusers.*"]
+module = ["torch", "diffusers", "diffusers.*", "redis", "rq"]
 ignore_missing_imports = true
