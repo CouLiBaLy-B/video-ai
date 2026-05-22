@@ -151,8 +151,38 @@ function App() {
       if (!response.ok) return;
       const nextJob = (await response.json()) as JobResponse;
       setJob(nextJob);
-      if (['completed', 'failed', 'cancelled'].includes(nextJob.status)) return;
+      if (['waiting_for_approval', 'completed', 'failed', 'cancelled'].includes(nextJob.status)) return;
       await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+  }
+
+
+  async function approveGeneration() {
+    if (!job) return;
+    setError(null);
+    setIsSubmitting(true);
+    try {
+      const response = await fetch(`/api/generations/${job.id}/approve`, { method: 'POST' });
+      if (!response.ok) throw new Error(await response.text());
+      const approved = (await response.json()) as JobResponse;
+      setJob(approved);
+      await pollJob(approved.id);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Erreur inconnue');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function rejectGeneration() {
+    if (!job) return;
+    setError(null);
+    try {
+      const response = await fetch(`/api/generations/${job.id}/reject`, { method: 'POST' });
+      if (!response.ok) throw new Error(await response.text());
+      setJob((await response.json()) as JobResponse);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Erreur inconnue');
     }
   }
 
@@ -257,6 +287,20 @@ function App() {
                     <p>{step.description}</p>
                   </div>
                 ))}
+              </div>
+            )}
+            {job.status === 'waiting_for_approval' && (
+              <div className="approval-card">
+                <strong>Validation GPU requise</strong>
+                <p>Cette génération utilise un backend coûteux. Confirme avant de lancer le worker GPU.</p>
+                <div>
+                  <button type="button" onClick={approveGeneration} disabled={isSubmitting}>
+                    Valider la génération GPU
+                  </button>
+                  <button type="button" className="secondary" onClick={rejectGeneration}>
+                    Rejeter
+                  </button>
+                </div>
               </div>
             )}
             {job.events.length > 0 && (
