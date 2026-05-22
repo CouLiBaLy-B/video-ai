@@ -27,7 +27,7 @@ class FastApiBackgroundTaskQueue:
 
     def enqueue(self, task: Callable[[], Awaitable[None]]) -> None:
         """Schedule a coroutine task after the response is sent."""
-        self._background_tasks.add_task(task)
+        self._background_tasks.add_task(_await_task, task)
 
 
 async def run_orchestrator_job(
@@ -66,3 +66,8 @@ async def run_approved_orchestrator_job(
         if latest.status != JobStatus.CANCELLED:
             failed = latest.transition(JobStatus.FAILED, f"Approved generation failed: {exc}")
             await repository.save(failed)
+
+
+async def _await_task(task: Callable[[], Awaitable[None]]) -> None:
+    """Await a queued coroutine factory."""
+    await task()
