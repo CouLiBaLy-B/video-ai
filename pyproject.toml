@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "video-ai"
 version = "0.1.0"
@@ -70,3 +74,7 @@ asyncio_mode = "auto"
 [[tool.mypy.overrides]]
 module = ["torch", "diffusers", "diffusers.*", "redis", "rq"]
 ignore_missing_imports = true
+
+[tool.setuptools.packages.find]
+where = ["apps/api/src"]
+include = ["video_ai*"]
