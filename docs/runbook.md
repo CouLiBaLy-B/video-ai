@@ -225,3 +225,23 @@ docker compose --profile prod up --build api worker redis postgres
 
 The current SQLAlchemy repository auto-creates the `generation_jobs` table as a safety net,
 but Alembic migrations are the recommended production path.
+
+
+## Observability
+
+The API emits JSON structured logs with request timing and `x-request-id`.
+
+Health endpoint:
+
+```bash
+curl http://localhost:8000/api/system/health
+```
+
+Metrics endpoint:
+
+```bash
+curl http://localhost:8000/api/system/metrics
+```
+
+Metrics currently include job counts by lifecycle status. The frontend displays a compact
+summary for total, completed, failed and cancelled jobs.

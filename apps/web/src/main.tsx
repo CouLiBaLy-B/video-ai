@@ -42,6 +42,19 @@ type ComponentHealth = {
   detail: string | null;
 };
 
+type JobMetrics = {
+  total: number;
+  queued: number;
+  planning: number;
+  analyzing: number;
+  waiting_for_approval: number;
+  generating: number;
+  reviewing: number;
+  completed: number;
+  failed: number;
+  cancelled: number;
+};
+
 type SystemHealth = {
   api: ComponentHealth;
   storage: ComponentHealth;
@@ -86,6 +99,7 @@ function App() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [capabilities, setCapabilities] = useState<SystemCapabilities | null>(null);
   const [health, setHealth] = useState<SystemHealth | null>(null);
+  const [metrics, setMetrics] = useState<JobMetrics | null>(null);
   const [backend, setBackend] = useState('mock');
   const [width, setWidth] = useState(512);
   const [height, setHeight] = useState(512);
@@ -107,6 +121,10 @@ function App() {
     fetch('/api/system/health')
       .then((response) => response.ok ? response.json() : null)
       .then((payload: SystemHealth | null) => setHealth(payload))
+      .catch(() => undefined);
+    fetch('/api/system/metrics')
+      .then((response) => response.ok ? response.json() : null)
+      .then((payload: JobMetrics | null) => setMetrics(payload))
       .catch(() => undefined);
   }, []);
 
@@ -274,6 +292,14 @@ function App() {
                   {name}: {component.status}
                 </span>
               ))}
+            </div>
+          )}
+          {metrics && (
+            <div className="metrics-line">
+              <span>Total: {metrics.total}</span>
+              <span>Completed: {metrics.completed}</span>
+              <span>Failed: {metrics.failed}</span>
+              <span>Cancelled: {metrics.cancelled}</span>
             </div>
           )}
 

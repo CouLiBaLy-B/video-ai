@@ -104,12 +104,14 @@ textarea {
   color: #8e877d;
   font-size: 0.86rem;
 }
+.metrics-line,
 .health-line {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   margin: 8px 0 16px;
 }
+.metrics-line span,
 .health-line span {
   border-radius: 999px;
   padding: 5px 9px;
@@ -118,6 +120,7 @@ textarea {
 }
 .health-line .ok { color: #99f0bc; }
 .health-line .warn { color: #ffe0a8; }
+.metrics-line span { color: #d6cec2; }
 
 button, .video-card a {
   border: 0;
