@@ -189,6 +189,7 @@ class VideoGenerationJob(DomainModel):
     status_reason: str | None = None
     plan: AgentPlan | None = None
     pending_parameters: GenerationParameters | None = None
+    generation_parameters: GenerationParameters | None = None
     video: GeneratedVideo | None = None
     quality_report: QualityReport | None = None
     events: list[JobEvent] = Field(default_factory=list)

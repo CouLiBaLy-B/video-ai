@@ -35,6 +35,20 @@ class JobEventResponse(BaseModel):
         return cls(status=event.status, message=event.message, created_at=event.created_at)
 
 
+class GenerationParametersResponse(BaseModel):
+    """Public representation of selected generation parameters."""
+
+    backend: str
+    model_id: str
+    width: int
+    height: int
+    num_frames: int
+    fps: int
+    seed: int | None
+    guidance_scale: float
+    inference_steps: int
+
+
 class JobResponse(BaseModel):
     """Public job representation."""
 
@@ -49,6 +63,7 @@ class JobResponse(BaseModel):
     video_url: str | None = None
     plan_steps: list[PlanStepResponse] = []
     events: list[JobEventResponse] = []
+    parameters: GenerationParametersResponse | None = None
 
     @classmethod
     def from_job(cls, job: VideoGenerationJob) -> JobResponse:
@@ -60,6 +75,20 @@ class JobResponse(BaseModel):
             else []
         )
         events = [JobEventResponse.from_event(event) for event in job.events]
+        parameters = None
+        if job.generation_parameters is not None:
+            selected = job.generation_parameters
+            parameters = GenerationParametersResponse(
+                backend=selected.model.backend.value,
+                model_id=selected.model.id,
+                width=selected.width,
+                height=selected.height,
+                num_frames=selected.num_frames,
+                fps=selected.fps,
+                seed=selected.seed,
+                guidance_scale=selected.guidance_scale,
+                inference_steps=selected.inference_steps,
+            )
         return cls(
             id=job.id,
             status=job.status,
@@ -70,6 +99,7 @@ class JobResponse(BaseModel):
             video_url=video_url,
             plan_steps=plan_steps,
             events=events,
+            parameters=parameters,
         )
 
 

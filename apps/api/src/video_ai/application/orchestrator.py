@@ -70,7 +70,9 @@ class VideoGenerationOrchestrator:
         )
         video = await self._video_generator.generate(parameters)
 
-        current = current.model_copy(update={"video": video, "pending_parameters": None})
+        current = current.model_copy(
+            update={"video": video, "pending_parameters": None, "generation_parameters": parameters}
+        )
         await self._repository.save(current)
         current = await self._transition(current, JobStatus.REVIEWING, "Reviewing generated video")
         report = await self._quality_reviewer.review(current.request, video, parameters)
@@ -121,7 +123,9 @@ class VideoGenerationOrchestrator:
             guidance_scale=preferences.guidance_scale or 3.5,
             inference_steps=preferences.inference_steps or 30,
         )
-        current = current.model_copy(update={"pending_parameters": parameters})
+        current = current.model_copy(
+            update={"pending_parameters": parameters, "generation_parameters": parameters}
+        )
         await self._repository.save(current)
         return current
 
