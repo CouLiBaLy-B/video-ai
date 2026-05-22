@@ -147,3 +147,48 @@ curl -X POST http://localhost:8000/api/generations/<job_id>/cancel
 
 Cancellation is checked before queued background tasks and before approved GPU execution starts.
 For long-running GPU kernels already inside a model call, cancellation is best-effort until the worker returns.
+
+
+## Redis/RQ production worker
+
+The API can enqueue generation jobs into Redis Queue instead of FastAPI background tasks.
+Use this mode for long GPU jobs and separate worker processes.
+
+Recommended production-like configuration:
+
+```env
+TASK_QUEUE_BACKEND=redis-rq
+JOB_REPOSITORY_BACKEND=sqlite
+SQLITE_DATABASE_PATH=.data/video_ai.sqlite3
+REDIS_URL=redis://localhost:6379/0
+RQ_QUEUE_NAME=video-ai
+```
+
+Install worker dependencies:
+
+```bash
+pip install -e '.[worker]'
+```
+
+Run an RQ worker locally:
+
+```bash
+PYTHONPATH=apps/api/src rq worker video-ai --url redis://localhost:6379/0
+```
+
+Run with Docker Compose:
+
+```bash
+docker compose --profile prod up --build api worker redis
+```
+
+Worker entrypoints are defined in:
+
+```text
+video_ai.workers.jobs.run_job_task
+video_ai.workers.jobs.run_approved_job_task
+```
+
+Important: when using `redis-rq`, use a persistent job repository shared by API and worker,
+such as SQLite for local production-like runs or Postgres in a future deployment.
+Do not use the in-memory repository with separate worker processes.

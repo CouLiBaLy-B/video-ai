@@ -6,7 +6,12 @@ services:
     environment:
       APP_ENV: development
       STORAGE_ROOT: /app/.data/storage
-      VIDEO_GENERATOR_BACKEND: mock
+      VIDEO_GENERATOR_BACKEND: ${VIDEO_GENERATOR_BACKEND:-mock}
+      TASK_QUEUE_BACKEND: ${TASK_QUEUE_BACKEND:-fastapi}
+      JOB_REPOSITORY_BACKEND: ${JOB_REPOSITORY_BACKEND:-memory}
+      SQLITE_DATABASE_PATH: /app/.data/video_ai.sqlite3
+      REDIS_URL: redis://redis:6379/0
+      RQ_QUEUE_NAME: video-ai
       VLLM_TEXT_BASE_URL: http://vllm-text:8000/v1
       VLLM_VISION_BASE_URL: http://vllm-vision:8000/v1
     volumes:
@@ -24,6 +29,29 @@ services:
     depends_on:
       - api
     profiles: ["mock", "ltx", "prod"]
+
+  worker:
+    build:
+      context: .
+      dockerfile: docker/api/Dockerfile
+    command: rq worker ${RQ_QUEUE_NAME:-video-ai} --url ${REDIS_URL:-redis://redis:6379/0}
+    environment:
+      APP_ENV: production
+      TASK_QUEUE_BACKEND: redis-rq
+      JOB_REPOSITORY_BACKEND: sqlite
+      SQLITE_DATABASE_PATH: /app/.data/video_ai.sqlite3
+      STORAGE_ROOT: /app/.data/storage
+      REDIS_URL: redis://redis:6379/0
+      RQ_QUEUE_NAME: video-ai
+      VIDEO_GENERATOR_BACKEND: ${VIDEO_GENERATOR_BACKEND:-mock}
+      AI_PROVIDER: ${AI_PROVIDER:-mock}
+      VLLM_TEXT_BASE_URL: http://vllm-text:8000/v1
+      VLLM_VISION_BASE_URL: http://vllm-vision:8000/v1
+    volumes:
+      - ./.data:/app/.data
+    depends_on:
+      - redis
+    profiles: ["prod", "worker"]
 
   redis:
     image: redis:7-alpine
