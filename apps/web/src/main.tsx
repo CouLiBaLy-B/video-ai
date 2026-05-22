@@ -25,6 +25,18 @@ type JobEventResponse = {
   created_at: string;
 };
 
+type GenerationParametersResponse = {
+  backend: string;
+  model_id: string;
+  width: number;
+  height: number;
+  num_frames: number;
+  fps: number;
+  seed: number | null;
+  guidance_scale: number;
+  inference_steps: number;
+};
+
 type JobResponse = {
   id: string;
   status: JobStatus;
@@ -35,6 +47,7 @@ type JobResponse = {
   video_url: string | null;
   plan_steps: PlanStepResponse[];
   events: JobEventResponse[];
+  parameters: GenerationParametersResponse | null;
 };
 
 type ComponentHealth = {
@@ -95,6 +108,7 @@ function App() {
   const [prompt, setPrompt] = useState('Transforme cette image en vidéo cinématique avec un lent mouvement de caméra.');
   const [image, setImage] = useState<File | null>(null);
   const [job, setJob] = useState<JobResponse | null>(null);
+  const [history, setHistory] = useState<JobResponse[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [capabilities, setCapabilities] = useState<SystemCapabilities | null>(null);
@@ -126,6 +140,7 @@ function App() {
       .then((response) => response.ok ? response.json() : null)
       .then((payload: JobMetrics | null) => setMetrics(payload))
       .catch(() => undefined);
+    void loadHistory();
   }, []);
 
   const timeline = useMemo<TimelineItem[]>(() => buildTimeline(job?.status), [job?.status]);
@@ -157,11 +172,18 @@ function App() {
       const created = (await response.json()) as JobResponse;
       setJob(created);
       await pollJob(created.id);
+      await loadHistory();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Erreur inconnue');
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  async function loadHistory() {
+    const response = await fetch('/api/generations');
+    if (!response.ok) return;
+    setHistory((await response.json()) as JobResponse[]);
   }
 
   async function pollJob(jobId: string) {
@@ -175,6 +197,43 @@ function App() {
     }
   }
 
+
+
+  async function rerunGeneration() {
+    if (!job) return;
+    setError(null);
+    setIsSubmitting(true);
+    try {
+      const response = await fetch(`/api/generations/${job.id}/rerun`, { method: 'POST' });
+      if (!response.ok) throw new Error(await response.text());
+      const created = (await response.json()) as JobResponse;
+      setJob(created);
+      await pollJob(created.id);
+      await loadHistory();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Erreur inconnue');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function createVariant() {
+    if (!job) return;
+    setError(null);
+    setIsSubmitting(true);
+    try {
+      const response = await fetch(`/api/generations/${job.id}/variant`, { method: 'POST' });
+      if (!response.ok) throw new Error(await response.text());
+      const created = (await response.json()) as JobResponse;
+      setJob(created);
+      await pollJob(created.id);
+      await loadHistory();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Erreur inconnue');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
 
   async function approveGeneration() {
     if (!job) return;
@@ -224,6 +283,16 @@ function App() {
         <div className="brand-mark">VA</div>
         <h1>Video AI</h1>
         <p>Interface agentique text + image → vidéo avec DeepAgents, vLLM et modèles open source.</p>
+        <div className="history-panel">
+          <h2>Historique</h2>
+          {history.length === 0 && <p>Aucune génération.</p>}
+          {history.slice(0, 12).map((item) => (
+            <button key={item.id} type="button" onClick={() => setJob(item)}>
+              <span>{statusLabels[item.status]}</span>
+              {item.prompt}
+            </button>
+          ))}
+        </div>
       </section>
 
       <section className="chat-panel">
@@ -334,6 +403,22 @@ function App() {
                 <button type="button" className="secondary" onClick={cancelGeneration}>
                   Annuler la génération
                 </button>
+              </div>
+            )}
+            {job.parameters && (
+              <div className="parameters-card">
+                <h3>Paramètres utilisés</h3>
+                <p>Backend: {job.parameters.backend} · Model: {job.parameters.model_id}</p>
+                <p>{job.parameters.width}×{job.parameters.height} · {job.parameters.num_frames} frames · {job.parameters.fps} FPS</p>
+                <p>Seed: {job.parameters.seed ?? 'auto'} · Guidance: {job.parameters.guidance_scale} · Steps: {job.parameters.inference_steps}</p>
+                <div>
+                  <button type="button" className="secondary" onClick={rerunGeneration} disabled={isSubmitting}>
+                    Relancer mêmes paramètres
+                  </button>
+                  <button type="button" className="secondary" onClick={createVariant} disabled={isSubmitting}>
+                    Nouvelle variante seed
+                  </button>
+                </div>
               </div>
             )}
             {job.status === 'waiting_for_approval' && (

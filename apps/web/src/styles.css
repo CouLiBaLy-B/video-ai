@@ -192,3 +192,35 @@ button.secondary {
 .cancel-card {
   margin-top: 14px;
 }
+
+.history-panel {
+  margin-top: 32px;
+}
+.history-panel h2 {
+  font-size: 1rem;
+  color: #ffe0a8;
+}
+.history-panel button {
+  width: 100%;
+  display: grid;
+  gap: 4px;
+  margin: 8px 0;
+  border-radius: 14px;
+  padding: 10px;
+  text-align: left;
+  background: rgba(255,255,255,0.07);
+  color: #f5f3ee;
+}
+.history-panel button span {
+  color: #99f0bc;
+  font-size: 0.75rem;
+}
+.parameters-card {
+  margin-top: 18px;
+  padding: 14px;
+  border-radius: 16px;
+  background: rgba(0,0,0,0.18);
+}
+.parameters-card h3 { margin: 0 0 10px; color: #ffe0a8; }
+.parameters-card p { color: #c7bfb4; margin: 6px 0; }
+.parameters-card div { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
