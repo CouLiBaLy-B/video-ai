@@ -110,3 +110,41 @@ async def test_create_generation_accepts_generation_parameters() -> None:
     assert b'"width": 320' in video_response.content
     assert b'"height": 240' in video_response.content
     assert b'"fps": 12' in video_response.content
+
+
+async def test_ltx_generation_waits_for_human_approval_and_can_be_rejected() -> None:
+    app = create_app()
+    files = {"image": ("input.png", png_bytes(), "image/png")}
+    data = {
+        "prompt": "Make this image cinematic",
+        "requested_backend": "ltx-video",
+        "width": "768",
+        "height": "512",
+        "num_frames": "121",
+    }
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        create_response = await client.post("/api/generations", data=data, files=files)
+        assert create_response.status_code == 202
+        payload = create_response.json()
+        get_response = await client.get(f"/api/generations/{payload['id']}")
+        payload = get_response.json()
+        assert payload["status"] == "waiting_for_approval"
+        assert payload["video_url"] is None
+
+        reject_response = await client.post(f"/api/generations/{payload['id']}/reject")
+        assert reject_response.status_code == 200
+        assert reject_response.json()["status"] == "cancelled"
+
+
+async def test_approve_generation_rejects_jobs_not_waiting_for_approval() -> None:
+    app = create_app()
+    files = {"image": ("input.png", png_bytes(), "image/png")}
+    data = {"prompt": "Make this image cinematic", "requested_backend": "mock"}
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        create_response = await client.post("/api/generations", data=data, files=files)
+        payload = create_response.json()
+        approve_response = await client.post(f"/api/generations/{payload['id']}/approve")
+
+    assert approve_response.status_code == 409

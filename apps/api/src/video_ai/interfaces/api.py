@@ -187,6 +187,41 @@ async def get_generation(
     return JobResponse.from_job(job)
 
 
+@router.post("/generations/{job_id}/approve", response_model=JobResponse)
+async def approve_generation(
+    job_id: UUID,
+    background_tasks: BackgroundTasks,
+    repository: JobRepository = Depends(get_job_repository),
+    orchestrator: VideoGenerationOrchestrator = Depends(get_orchestrator),
+) -> JobResponse:
+    """Approve a generation waiting for human confirmation."""
+    job = await repository.get(job_id)
+    if job is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Generation job not found")
+    if job.status != JobStatus.WAITING_FOR_APPROVAL:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Generation is not waiting for approval")
+    approved = job.transition(JobStatus.QUEUED, "Human approved GPU generation")
+    await repository.save(approved)
+    background_tasks.add_task(_run_approved_orchestrator_safely, orchestrator, job.id)
+    return JobResponse.from_job(approved)
+
+
+@router.post("/generations/{job_id}/reject", response_model=JobResponse)
+async def reject_generation(
+    job_id: UUID,
+    repository: JobRepository = Depends(get_job_repository),
+    orchestrator: VideoGenerationOrchestrator = Depends(get_orchestrator),
+) -> JobResponse:
+    """Reject and cancel a generation waiting for human confirmation."""
+    job = await repository.get(job_id)
+    if job is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Generation job not found")
+    if job.status != JobStatus.WAITING_FOR_APPROVAL:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Generation is not waiting for approval")
+    rejected = await orchestrator.reject(job)
+    return JobResponse.from_job(rejected)
+
+
 @router.get("/generations/{job_id}/events")
 async def stream_generation_events(
     job_id: UUID,
@@ -241,4 +276,19 @@ async def _run_orchestrator_safely(
         await orchestrator.run(job)
     except Exception as exc:  # pragma: no cover - defensive runtime guard
         failed = job.transition(JobStatus.FAILED, f"Generation failed: {exc}")
+        await repository.save(failed)
+
+
+async def _run_approved_orchestrator_safely(
+    orchestrator: VideoGenerationOrchestrator,
+    job_id: UUID,
+) -> None:
+    repository = get_job_repository()
+    job = await repository.get(job_id)
+    if job is None:
+        return
+    try:
+        await orchestrator.run_approved(job)
+    except Exception as exc:  # pragma: no cover - defensive runtime guard
+        failed = job.transition(JobStatus.FAILED, f"Approved generation failed: {exc}")
         await repository.save(failed)
