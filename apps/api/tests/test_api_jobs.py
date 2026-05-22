@@ -1,5 +1,6 @@
 from httpx import ASGITransport, AsyncClient
 
+from image_helpers import png_bytes
 from video_ai.main import create_app
 
 
@@ -14,7 +15,7 @@ async def test_health_endpoint() -> None:
 
 async def test_create_get_and_download_generation_job() -> None:
     app = create_app()
-    files = {"image": ("input.png", b"fake-png-bytes", "image/png")}
+    files = {"image": ("input.png", png_bytes(), "image/png")}
     data = {"prompt": "Make this image cinematic"}
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:

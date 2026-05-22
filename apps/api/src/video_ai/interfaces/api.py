@@ -22,6 +22,7 @@ from video_ai.application.jobs import JobApplicationService
 from video_ai.application.orchestrator import VideoGenerationOrchestrator
 from video_ai.config.settings import get_settings
 from video_ai.domain.enums import JobStatus
+from video_ai.infrastructure.image_validation import ImageValidationError, ImageValidationService
 from video_ai.interfaces.dependencies import get_job_repository, get_job_service, get_orchestrator
 from video_ai.interfaces.schemas import JobResponse
 from video_ai.storage.memory import InMemoryJobRepository
@@ -43,16 +44,25 @@ async def create_generation(
 ) -> JobResponse:
     """Create and asynchronously process a text+image to video generation job."""
     settings = get_settings()
-    if image.content_type not in {"image/jpeg", "image/png", "image/webp"}:
-        raise HTTPException(status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, "Unsupported image type")
     content = await image.read()
-    if len(content) > settings.max_upload_bytes:
-        raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "Image is too large")
+    validator = ImageValidationService(max_bytes=settings.max_upload_bytes)
+    try:
+        sanitized = validator.validate_and_sanitize(content, image.content_type or "")
+    except ImageValidationError as exc:
+        status_code = (
+            status.HTTP_413_REQUEST_ENTITY_TOO_LARGE
+            if "large" in str(exc).lower()
+            else status.HTTP_415_UNSUPPORTED_MEDIA_TYPE
+        )
+        raise HTTPException(status_code, str(exc)) from exc
+
     job = await service.create_generation_job(
         prompt=prompt,
-        image_content=content,
+        image_content=sanitized.content,
         image_filename=image.filename or "input.png",
-        image_mime_type=image.content_type,
+        image_mime_type=sanitized.mime_type,
+        image_width=sanitized.width,
+        image_height=sanitized.height,
     )
     background_tasks.add_task(_run_orchestrator_safely, orchestrator, job.id)
     return JobResponse.from_job(job)

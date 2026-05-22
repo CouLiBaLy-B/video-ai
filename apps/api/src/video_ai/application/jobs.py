@@ -22,6 +22,8 @@ class JobApplicationService:
         image_content: bytes,
         image_filename: str,
         image_mime_type: str,
+        image_width: int | None = None,
+        image_height: int | None = None,
         user_id: str | None = None,
     ) -> VideoGenerationJob:
         """Create a queued generation job from user input."""
@@ -34,6 +36,8 @@ class JobApplicationService:
             path=storage_ref.path or Path(storage_ref.uri),
             mime_type=image_mime_type,
             size_bytes=storage_ref.size_bytes,
+            width=image_width,
+            height=image_height,
         )
         request = GenerationRequest(prompt=prompt, image=image, user_id=user_id)
         job = VideoGenerationJob(request=request)
