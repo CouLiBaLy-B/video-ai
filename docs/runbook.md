@@ -300,3 +300,50 @@ curl -X POST http://localhost:8000/api/generations/<job_id>/variant
 ```
 
 The frontend sidebar displays recent generations and lets the user reload a job, rerun it, or create a new seed variant.
+
+
+## Phase 1 smoke validation
+
+Run a dry-run LTX parameter validation without loading GPU models:
+
+```bash
+make smoke-ltx
+```
+
+Run a real LTX smoke generation on a CUDA host:
+
+```bash
+VIDEO_GENERATOR_BACKEND=ltx-video \
+LTX_VIDEO_DEVICE=cuda \
+python scripts/smoke_ltx.py --run --image examples/input.png
+```
+
+Run real vLLM text + vision smoke tests after starting vLLM servers:
+
+```bash
+AI_PROVIDER=vllm \
+VLLM_TEXT_BASE_URL=http://localhost:8000/v1 \
+VLLM_VISION_BASE_URL=http://localhost:8001/v1 \
+VLLM_FALLBACK_TO_MOCK=false \
+python scripts/smoke_vllm.py --image examples/input.png
+```
+
+## Phase 2 production-like stack validation
+
+For API + Redis/RQ + Postgres, use explicit production-like env values:
+
+```bash
+TASK_QUEUE_BACKEND=redis-rq \
+JOB_REPOSITORY_BACKEND=postgres \
+VIDEO_GENERATOR_BACKEND=mock \
+docker compose --profile prod up --build api worker redis postgres
+```
+
+Then in another shell create a mock job through the UI or API and verify that:
+
+1. the API enqueues the job in RQ;
+2. the worker consumes it;
+3. Postgres stores status transitions;
+4. `/api/system/metrics` shows the completed job.
+
+For local `mock` profile without Postgres/Redis, the API defaults to `JOB_REPOSITORY_BACKEND=memory` and `TASK_QUEUE_BACKEND=fastapi`.

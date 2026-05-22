@@ -1,4 +1,4 @@
-.PHONY: install install-web dev-api dev-web doctor test lint typecheck build-web quality clean
+.PHONY: install install-web dev-api dev-web doctor smoke-ltx smoke-vllm test lint typecheck build-web quality clean
 
 install:
 	python -m pip install -e '.[dev]'
@@ -14,6 +14,12 @@ dev-web:
 
 doctor:
 	python scripts/doctor.py
+
+smoke-ltx:
+	python scripts/smoke_ltx.py
+
+smoke-vllm:
+	python scripts/smoke_vllm.py
 
 test:
 	python -m pytest apps/api/tests

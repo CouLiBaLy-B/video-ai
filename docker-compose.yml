@@ -8,7 +8,7 @@ services:
       STORAGE_ROOT: /app/.data/storage
       VIDEO_GENERATOR_BACKEND: ${VIDEO_GENERATOR_BACKEND:-mock}
       TASK_QUEUE_BACKEND: ${TASK_QUEUE_BACKEND:-fastapi}
-      JOB_REPOSITORY_BACKEND: ${JOB_REPOSITORY_BACKEND:-postgres}
+      JOB_REPOSITORY_BACKEND: ${JOB_REPOSITORY_BACKEND:-memory}
       SQLITE_DATABASE_PATH: /app/.data/video_ai.sqlite3
       DATABASE_URL: postgresql+psycopg://video_ai:video_ai_dev@postgres:5432/video_ai
       REDIS_URL: redis://redis:6379/0
