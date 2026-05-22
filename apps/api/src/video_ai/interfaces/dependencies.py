@@ -5,12 +5,13 @@ from functools import lru_cache
 from video_ai.application.jobs import JobApplicationService
 from video_ai.application.orchestrator import VideoGenerationOrchestrator
 from video_ai.config.settings import Settings, get_settings
-from video_ai.infrastructure.simple_ai import SimplePromptEnhancer, SimpleVisionAnalyzer
-from video_ai.infrastructure.video import (
-    HeuristicQualityReviewer,
-    MockVideoGenerator,
-    StaticVideoModelRouter,
+from video_ai.infrastructure.factories import (
+    create_model_router,
+    create_prompt_enhancer,
+    create_video_generator,
+    create_vision_analyzer,
 )
+from video_ai.infrastructure.video import HeuristicQualityReviewer
 from video_ai.storage.local import LocalStorageService
 from video_ai.storage.memory import InMemoryJobRepository
 
@@ -39,17 +40,13 @@ def get_job_service() -> JobApplicationService:
 
 
 def get_orchestrator() -> VideoGenerationOrchestrator:
-    """Build the default local orchestrator.
-
-    The default profile uses deterministic adapters and the mock generator so the
-    full workflow can run without GPU. Production profiles will replace the AI
-    ports with DeepAgents + vLLM and real video generators.
-    """
+    """Build the configured orchestrator."""
+    settings = get_settings()
     return VideoGenerationOrchestrator(
         repository=get_job_repository(),
-        vision_analyzer=SimpleVisionAnalyzer(),
-        prompt_enhancer=SimplePromptEnhancer(),
-        model_router=StaticVideoModelRouter(),
-        video_generator=MockVideoGenerator(get_output_storage()),
+        vision_analyzer=create_vision_analyzer(settings),
+        prompt_enhancer=create_prompt_enhancer(settings),
+        model_router=create_model_router(settings),
+        video_generator=create_video_generator(settings, get_output_storage()),
         quality_reviewer=HeuristicQualityReviewer(),
     )
