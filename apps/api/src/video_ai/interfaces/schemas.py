@@ -79,6 +79,7 @@ class SystemCapabilitiesResponse(BaseModel):
     agent_planner_provider: str
     ai_provider: str
     default_video_backend: str
+    task_queue_backend: str
     available_video_backends: list[str]
     planned_video_backends: list[str]
     text_model: str

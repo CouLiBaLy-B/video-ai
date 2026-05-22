@@ -20,18 +20,18 @@ from fastapi.responses import FileResponse, StreamingResponse
 
 from video_ai.application.jobs import JobApplicationService
 from video_ai.application.orchestrator import VideoGenerationOrchestrator
-from video_ai.application.task_queue import (
-    FastApiBackgroundTaskQueue,
-    run_approved_orchestrator_job,
-    run_orchestrator_job,
-)
 from video_ai.config.settings import get_settings
 from video_ai.domain.enums import JobStatus, VideoBackend
 from video_ai.domain.ports import JobRepository
 from video_ai.infrastructure.image_validation import ImageValidationError, ImageValidationService
 from video_ai.infrastructure.ltx_video import LtxVideoParameterValidator
 from video_ai.infrastructure.vllm import VllmHealthChecker
-from video_ai.interfaces.dependencies import get_job_repository, get_job_service, get_orchestrator
+from video_ai.interfaces.dependencies import (
+    create_job_task_queue,
+    get_job_repository,
+    get_job_service,
+    get_orchestrator,
+)
 from video_ai.interfaces.schemas import (
     ComponentHealthResponse,
     JobResponse,
@@ -52,6 +52,7 @@ async def get_system_capabilities() -> SystemCapabilitiesResponse:
         agent_planner_provider=settings.agent_planner_provider,
         ai_provider=settings.ai_provider,
         default_video_backend=settings.video_generator_backend,
+        task_queue_backend=settings.task_queue_backend,
         available_video_backends=[VideoBackend.MOCK.value, VideoBackend.LTX_VIDEO.value],
         planned_video_backends=[VideoBackend.WAN_I2V.value],
         text_model=settings.vllm_text_model,
@@ -167,12 +168,12 @@ async def create_generation(
         guidance_scale=guidance_scale,
         inference_steps=inference_steps,
     )
-    queue = FastApiBackgroundTaskQueue(background_tasks)
-    queue.enqueue(
-        lambda: run_orchestrator_job(
-            orchestrator=orchestrator, repository=get_job_repository(), job_id=job.id
-        )
+    queue = create_job_task_queue(
+        background_tasks=background_tasks,
+        orchestrator=orchestrator,
+        repository=get_job_repository(),
     )
+    queue.enqueue_generation(job.id)
     return JobResponse.from_job(job)
 
 
@@ -212,12 +213,12 @@ async def approve_generation(
         raise HTTPException(status.HTTP_409_CONFLICT, "Generation is not waiting for approval")
     approved = job.transition(JobStatus.QUEUED, "Human approved GPU generation")
     await repository.save(approved)
-    queue = FastApiBackgroundTaskQueue(background_tasks)
-    queue.enqueue(
-        lambda: run_approved_orchestrator_job(
-            orchestrator=orchestrator, repository=get_job_repository(), job_id=job.id
-        )
+    queue = create_job_task_queue(
+        background_tasks=background_tasks,
+        orchestrator=orchestrator,
+        repository=get_job_repository(),
     )
+    queue.enqueue_approved_generation(job.id)
     return JobResponse.from_job(approved)
 
 
