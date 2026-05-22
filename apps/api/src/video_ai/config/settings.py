@@ -41,6 +41,11 @@ class Settings(BaseSettings):
     rate_limit_window_seconds: int = 60
     auth_enabled: bool = False
     api_keys: str = "demo:dev-token"
+    max_active_jobs_per_user: int = 2
+    max_daily_jobs_per_user: int = 20
+    max_generation_width: int = 1280
+    max_generation_height: int = 768
+    max_generation_frames: int = 121
     task_queue_backend: TaskQueueBackend = "fastapi"
     redis_url: str = "redis://localhost:6379/0"
     rq_queue_name: str = "video-ai"

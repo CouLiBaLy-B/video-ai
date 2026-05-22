@@ -7,6 +7,7 @@ from fastapi import BackgroundTasks
 
 from video_ai.application.jobs import JobApplicationService
 from video_ai.application.orchestrator import VideoGenerationOrchestrator
+from video_ai.application.quotas import QuotaLimits, QuotaService
 from video_ai.application.task_queue import (
     FastApiJobTaskQueue,
     JobTaskQueue,
@@ -147,3 +148,18 @@ def _create_storage_service(settings: Settings, namespace: str) -> StorageServic
             presigned_url_expires_seconds=settings.s3_presigned_url_expires_seconds,
         )
     return LocalStorageService(settings.storage_root / namespace)
+
+
+def get_quota_service() -> QuotaService:
+    """Build quota service from runtime settings."""
+    settings = get_settings()
+    return QuotaService(
+        get_job_repository(),
+        QuotaLimits(
+            max_active_jobs_per_user=settings.max_active_jobs_per_user,
+            max_daily_jobs_per_user=settings.max_daily_jobs_per_user,
+            max_generation_width=settings.max_generation_width,
+            max_generation_height=settings.max_generation_height,
+            max_generation_frames=settings.max_generation_frames,
+        ),
+    )
