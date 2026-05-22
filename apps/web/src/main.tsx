@@ -1,4 +1,4 @@
-import React, { FormEvent, useMemo, useState } from 'react';
+import React, { FormEvent, useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import './styles.css';
 
@@ -37,6 +37,16 @@ type JobResponse = {
   events: JobEventResponse[];
 };
 
+type SystemCapabilities = {
+  agent_planner_provider: string;
+  ai_provider: string;
+  default_video_backend: string;
+  available_video_backends: string[];
+  planned_video_backends: string[];
+  text_model: string;
+  vision_model: string;
+};
+
 type TimelineItem = {
   label: string;
   status: 'pending' | 'active' | 'done' | 'failed';
@@ -60,6 +70,26 @@ function App() {
   const [job, setJob] = useState<JobResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [capabilities, setCapabilities] = useState<SystemCapabilities | null>(null);
+  const [backend, setBackend] = useState('mock');
+  const [width, setWidth] = useState(512);
+  const [height, setHeight] = useState(512);
+  const [numFrames, setNumFrames] = useState(121);
+  const [fps, setFps] = useState(24);
+  const [seed, setSeed] = useState('');
+  const [guidanceScale, setGuidanceScale] = useState(3.5);
+  const [inferenceSteps, setInferenceSteps] = useState(30);
+
+  useEffect(() => {
+    fetch('/api/system/capabilities')
+      .then((response) => response.ok ? response.json() : null)
+      .then((payload: SystemCapabilities | null) => {
+        if (!payload) return;
+        setCapabilities(payload);
+        setBackend(payload.default_video_backend);
+      })
+      .catch(() => undefined);
+  }, []);
 
   const timeline = useMemo<TimelineItem[]>(() => buildTimeline(job?.status), [job?.status]);
 
@@ -75,6 +105,14 @@ function App() {
       const form = new FormData();
       form.append('prompt', prompt);
       form.append('image', image);
+      form.append('requested_backend', backend);
+      form.append('width', String(width));
+      form.append('height', String(height));
+      form.append('num_frames', String(numFrames));
+      form.append('fps', String(fps));
+      form.append('guidance_scale', String(guidanceScale));
+      form.append('inference_steps', String(inferenceSteps));
+      if (seed.trim()) form.append('seed', seed.trim());
       const response = await fetch('/api/generations', { method: 'POST', body: form });
       if (!response.ok) {
         throw new Error(await response.text());
@@ -124,6 +162,50 @@ function App() {
             />
             <span>{image ? image.name : 'Glisse ou sélectionne une image'}</span>
           </label>
+          <div className="controls-grid">
+            <label>
+              Backend
+              <select value={backend} onChange={(event) => setBackend(event.target.value)}>
+                {(capabilities?.available_video_backends ?? ['mock', 'ltx-video']).map((item) => (
+                  <option key={item} value={item}>{item}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Largeur
+              <input type="number" min="64" max="4096" value={width} onChange={(event) => setWidth(Number(event.target.value))} />
+            </label>
+            <label>
+              Hauteur
+              <input type="number" min="64" max="4096" value={height} onChange={(event) => setHeight(Number(event.target.value))} />
+            </label>
+            <label>
+              Frames
+              <input type="number" min="1" max="1000" value={numFrames} onChange={(event) => setNumFrames(Number(event.target.value))} />
+            </label>
+            <label>
+              FPS
+              <input type="number" min="1" max="120" value={fps} onChange={(event) => setFps(Number(event.target.value))} />
+            </label>
+            <label>
+              Seed
+              <input value={seed} placeholder="auto" onChange={(event) => setSeed(event.target.value)} />
+            </label>
+            <label>
+              Guidance
+              <input type="number" min="0" max="30" step="0.1" value={guidanceScale} onChange={(event) => setGuidanceScale(Number(event.target.value))} />
+            </label>
+            <label>
+              Steps
+              <input type="number" min="1" max="200" value={inferenceSteps} onChange={(event) => setInferenceSteps(Number(event.target.value))} />
+            </label>
+          </div>
+          {capabilities && (
+            <p className="capabilities-line">
+              Planner: {capabilities.agent_planner_provider} · AI: {capabilities.ai_provider} · VLM: {capabilities.vision_model}
+            </p>
+          )}
+
           <button disabled={isSubmitting}>{isSubmitting ? 'Génération...' : 'Générer la vidéo'}</button>
         </form>
 

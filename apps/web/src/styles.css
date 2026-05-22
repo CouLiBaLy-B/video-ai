@@ -80,6 +80,31 @@ textarea {
 }
 .upload-box input { display: none; }
 
+.controls-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 12px 0 16px;
+}
+.controls-grid label {
+  display: grid;
+  gap: 6px;
+  color: #c7bfb4;
+  font-size: 0.86rem;
+}
+.controls-grid input, .controls-grid select {
+  width: 100%;
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 12px;
+  padding: 10px 11px;
+  color: #fff;
+  background: rgba(255,255,255,0.06);
+}
+.capabilities-line {
+  color: #8e877d;
+  font-size: 0.86rem;
+}
+
 button, .video-card a {
   border: 0;
   border-radius: 999px;
@@ -125,4 +150,5 @@ button:disabled { opacity: 0.65; cursor: not-allowed; }
 @media (max-width: 780px) {
   .app-shell { grid-template-columns: 1fr; }
   .sidebar { border-right: 0; border-bottom: 1px solid rgba(255,255,255,0.08); }
+  .controls-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
